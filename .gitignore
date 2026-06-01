@@ -1,3 +1,5 @@
+#### RStudio Template ----------------------------------------------------------
+
 # History files
 .Rhistory
 .Rapp.history
@@ -47,3 +49,33 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+#### Project-specific ----------------------------------------------------------
+
+# configuration
+config/config.yml
+
+# data
+data/processed/
+!data/processed/.gitkeep
+data/raw/
+!data/raw/.gitkeep
+!data/sample/
+
+# outputs
+outputs/
+
+# renv
+renv/library/
+renv/local/
+renv/cellar/
+renv/lock/
+renv/python/
+renv/sandbox/
+renv/staging/
+
+
+#### OS files ----------------------------------------------------------
+.DS_Store
+Thumbs.db
+
