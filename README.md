@@ -6,11 +6,13 @@ Open analytical code supporting official statistics on Scotland’s peatlands.
 
 ## Overview
 
-This project contains reproducible R workflows which support the production of Official Statistics on Scotland's Peatlands (in development).
+The Scottish Government's Rural and Environment Science and Analytical Services division (RESAS) is [Developing Official Statistics on Scotland's Peatlands](https://www.gov.scot/publications/developing-official-statistics-on-scotlands-peatlands/).
+
+This project contains reproducible R workflows which support the production these official statistics in development.
 
 The project is designed following [reproducible analytical pipeline (RAP) principles](https://analysisfunction.civilservice.gov.uk/support/reproducible-analytical-pipelines/), ensuring that results are robust, traceable, and easy to maintain.
 
-This project adheres to the [Code of Practice for Statistics](https://code.statisticsauthority.gov.uk/)
+Development adheres to the [Code of Practice for Statistics](https://code.statisticsauthority.gov.uk/)
 
 ------------------------------------------------------------------------
 
@@ -57,7 +59,7 @@ Sample data may be included in `data/sample/` for demonstration and testing purp
 
 This repository includes both unit testing and high-level validation:
 
--   Unit tests: `quality/tests/`\
+-   Unit tests: `quality/tests/`
 -   Validation scripts: `quality/validation/`
 
 ------------------------------------------------------------------------
@@ -68,9 +70,9 @@ Configuration is managed through `config/config.yml`.
 
 This file may include:
 
-\- file paths\
-- environment-specific settings\
-- credentials (where appropriate)
+-   file paths
+-   environment-specific settings
+-   credentials (where appropriate)
 
 This file is not tracked in version control. A template is provided in:
 
@@ -86,7 +88,7 @@ This project is in early development.
 
 Contributions to this project are currently managed by a small group of maintainers.
 
-This repository follows the guidance set out in the <https://github.com/ScotGovAnalysis/welcome> repository.
+This repository follows the guidance set out in <https://github.com/ScotGovAnalysis/welcome> .
 
 If you would like to contribute or have suggestions, please contact the project team to discuss further.
 
@@ -114,4 +116,4 @@ This work is licensed under the Open Government Licence v3.0.
 
 ## Contact
 
-[environmentanalysis\@gov.scot](mailto:environmentanalysis@gov.scot){.email}
+[environmentanalysis\@gov.scot](mailto:environmentanalysis@gov.scot)
