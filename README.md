@@ -18,11 +18,11 @@ Development adheres to the [Code of Practice for Statistics](https://code.statis
 
 ## Project structure
 
--   `scripts/` – workflow scripts for data processing and analysis\
--   `R/` – reusable functions\
--   `data/` – raw, processed, and sample data\
--   `outputs/` – generated tables, charts, and spatial outputs\
--   `quality/` – unit tests and validation scripts\
+-   `scripts/` – workflow scripts for data processing and analysis
+-   `R/` – reusable functions
+-   `data/` – raw, processed, and sample data
+-   `outputs/` – generated tables, charts, and spatial outputs
+-   `quality/` – unit tests and validation scripts
 -   `config/` – configuration files
 
 ------------------------------------------------------------------------
