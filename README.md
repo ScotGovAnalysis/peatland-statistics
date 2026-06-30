@@ -29,7 +29,7 @@ Development adheres to the [Code of Practice for Statistics](https://code.statis
 
 ## Reproducibility
 
-This project uses the `renv` package to manage package versions.
+This project uses the [renv](https://rstudio.github.io/renv/index.html) package to manage package versions.
 
 To recreate the R environment, run:
 
@@ -37,11 +37,16 @@ To recreate the R environment, run:
 renv::restore()
 ```
 
+If you add or update a package, you should run:
+
+```         
+renv::snapshot()
+```
 ------------------------------------------------------------------------
 
 ## Running the analysis
 
-Analytical workflows are organised into scripts in the `scripts/` directory. These are typically run in sequence (e.g. data acquisition → cleaning → analysis → outputs).
+A main control script, pipeline.R, is used to run the analysis.
 
 ------------------------------------------------------------------------
 
