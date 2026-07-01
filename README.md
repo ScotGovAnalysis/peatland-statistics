@@ -1,3 +1,5 @@
+ALASTAIR ADDED THIS TO CHECK IF GIT WAS WORKING
+
 # peatland-statistics
 
 Open analytical code supporting official statistics on Scotland’s peatlands.
