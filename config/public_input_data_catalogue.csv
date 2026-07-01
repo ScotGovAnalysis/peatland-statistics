@@ -1,0 +1,3 @@
+﻿dataset,data_location,dataset_format,metadata_location,metadata_format
+lcs_88,https://maps.gov.scot/ATOM/shapefiles/SG_LandCoverScotland_1988.zip,.zip,https://www.spatialdata.gov.scot/geonetwork/srv/api/records/7dfaf8ce-2123-4eec-8a16-2e85fab7077d/formatters/xml,.xml
+lca_250k,https://www.hutton.ac.uk/sites/default/files/files/soils/downloads/Hutton_LCA250K_OpenData.zip,.zip,https://spatialdata.gov.scot/geonetwork/srv/api/records/24c6df5a-6b04-43f8-839f-0d45cc2802e3/formatters/xml,.xml

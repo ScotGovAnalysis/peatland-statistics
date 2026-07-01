@@ -55,6 +55,9 @@ rsconnect/
 # configuration
 config/config.yml
 
+# targets folder
+_targets/
+
 # data
 data/processed/
 !data/processed/.gitkeep
