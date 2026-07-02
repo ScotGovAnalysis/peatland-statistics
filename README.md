@@ -68,6 +68,7 @@ dplyr::mutate()
 ```
 
 This makes package dependencies explicit and improves compatibility with both targets and renv.
+
 ------------------------------------------------------------------------
 
 ## Data and outputs
