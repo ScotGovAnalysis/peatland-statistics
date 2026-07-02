@@ -18,12 +18,13 @@ Development adheres to the [Code of Practice for Statistics](https://code.statis
 
 ## Project structure
 
--   `scripts/` – workflow scripts for data processing and analysis
 -   `R/` – reusable functions
 -   `data/` – raw, processed, and sample data
 -   `outputs/` – generated tables, charts, and spatial outputs
 -   `quality/` – unit tests and validation scripts
 -   `config/` – configuration files
+
+This project generally follows a functional programming paradigm.
 
 ------------------------------------------------------------------------
 
@@ -46,8 +47,27 @@ renv::snapshot()
 
 ## Running the analysis
 
-A main control script, pipeline.R, is used to run the analysis.
 
+This project uses the [targets](https://books.ropensci.org/targets/) package.
+
+> The targets package is a Make-like pipeline tool for statistics and data science in R. It skips computationally expensive tasks that are already up to date, orchestrates computation (including parallel execution where appropriate), and treats files and objects as part of a reproducible workflow. If the current outputs match the current code and input data, the pipeline is considered up to date and does not rerun unnecessary steps.
+
+The main pipeline definition is contained in the `_targets.R` script.
+
+There is a moderate learning curve, so reading the
+[targets user manual](https://books.ropensci.org/targets/) is recommended.
+
+This project uses [renv](https://rstudio.github.io/renv/) to manage package dependencies. The `targets` and `renv` packages work well together to support reproducible analyses.
+
+When writing functions and target commands, package namespaces should generally be used explicitly, for example:
+
+```r
+purrr::map()
+readr::read_csv()
+dplyr::mutate()
+```
+
+This makes package dependencies explicit and improves compatibility with both targets and renv.
 ------------------------------------------------------------------------
 
 ## Data and outputs
@@ -84,6 +104,9 @@ This file is not tracked in version control. A template is provided in:
 ```         
 config/config_template.yml
 ```
+
+The config folder also contains some tracked public files for configuration of the analysis:
+-  `public_input_data_catalogue.csv` 
 
 ------------------------------------------------------------------------
 

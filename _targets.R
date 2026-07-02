@@ -44,15 +44,36 @@ library(targets)
 #   # Set other options as needed.
 # )
 
+tar_option_set(
+  
+  packages = c(
+    "readr",
+    "purrr",
+    "tibble"
+  )
+)
+
+
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
 # tar_source("other_functions.R") # Source other scripts as needed.
-tar_source("scripts/load_packages.R")
+
 # Replace the target list below with your own:
 list(
   tar_target(
-    name = data,
-    command = tibble(x = rnorm(100), y = rnorm(100))
-    # format = "qs" # Efficient storage for general data objects.
+    public_data_catalogue,
+    readr::read_csv("config/public_input_data_catalogue.csv") |>
+      tibble::as_tibble()
+  ),
+  
+  tar_target(
+    download_public_dataset,
+    do.call(
+      download_dataset_and_metadata,
+      public_data_catalogue
+    ),
+    pattern = map(public_data_catalogue),
+    format = "file"
   )
+  
 )

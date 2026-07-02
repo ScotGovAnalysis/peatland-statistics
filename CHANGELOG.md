@@ -11,6 +11,17 @@ may change at any time, and the project is not considered stable.
 
 Dates follow YYYY-MM-DD format.
 
+## 0.1.2 2026-07-02
+
+## Removed
+- scripts folder and content: not required
+- dependencies will be managed via the _targets script and namespaces.
+
+## Changed
+- download_data functions completed
+- _targets.R pipeline configured correctly
+- readme to reflect above changes
+
 ## 0.1.1 2026-07-01
 
 ### Added
