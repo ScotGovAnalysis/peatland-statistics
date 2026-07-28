@@ -60,6 +60,12 @@ tar_source()
 
 # Replace the target list below with your own:
 list(
+  
+  tar_target(
+    config,
+    config::get(file = "config/config.yml")
+  ),
+  
   tar_target(
     public_data_catalogue,
     readr::read_csv("config/public_input_data_catalogue.csv") |>
@@ -67,12 +73,24 @@ list(
   ),
   
   tar_target(
-    download_public_dataset,
+    download_public_datasets,
     do.call(
       download_dataset_and_metadata,
       public_data_catalogue
     ),
     pattern = map(public_data_catalogue),
+    format = "file"
+  ),
+  
+  tar_target(
+    spatial_data_input_list,
+    config$input_datasets
+  ),
+  
+  tar_target(
+    process_spatial_datasets,
+    process_spatial_dataset(spatial_data_input_list),
+    pattern = map(spatial_data_input_list),
     format = "file"
   )
   
