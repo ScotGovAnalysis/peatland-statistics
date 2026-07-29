@@ -54,6 +54,12 @@ This project uses the [targets](https://books.ropensci.org/targets/) package.
 
 The main pipeline definition is contained in the `_targets.R` script.
 
+**To run the analysis, call this function in the console:**
+
+```r
+targets::tar_make()
+```
+
 There is a moderate learning curve, so reading the
 [targets user manual](https://books.ropensci.org/targets/) is recommended.
 

@@ -11,13 +11,18 @@ may change at any time, and the project is not considered stable.
 
 Dates follow YYYY-MM-DD format.
 
+## 0.1.3 2026-07-28
+
+### Added
+- initial functions to process spatial data, to refine further
+
 ## 0.1.2 2026-07-02
 
-## Removed
+### Removed
 - scripts folder and content: not required
 - dependencies will be managed via the _targets script and namespaces.
 
-## Changed
+### Changed
 - download_data functions completed
 - _targets.R pipeline configured correctly
 - readme to reflect above changes
