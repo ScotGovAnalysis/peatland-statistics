@@ -63,12 +63,12 @@ list(
   
   tar_target(
     config,
-    config::get(file = "config/config.yml")
+    config::get(file = fs::path("config", "config.yml"))
   ),
   
   tar_target(
     public_data_catalogue,
-    readr::read_csv("config/public_input_data_catalogue.csv") |>
+    readr::read_csv(fs::path("config", "public_input_data_catalogue.csv")) |>
       tibble::as_tibble()
   ),
   
@@ -84,7 +84,7 @@ list(
   
   tar_target(
     spatial_data_input_list,
-    config$input_datasets
+    config$spatial_input_datasets
   ),
   
   tar_target(
