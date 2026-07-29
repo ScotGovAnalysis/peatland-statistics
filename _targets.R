@@ -60,10 +60,22 @@ tar_source()
 
 # Replace the target list below with your own:
 list(
+
+  # Configuration ----
   
   tar_target(
     config,
-    config::get(file = fs::path("config", "config.yml"))
+    yaml::read_yaml(fs::path("config", "config.yml"))
+  ),
+  
+  tar_target(
+    spatial_data_input_list,
+    config$spatial_input_datasets
+  ),
+  
+  tar_target(
+    common_extent,
+    config$spatial_parameters$common_extent
   ),
   
   tar_target(
@@ -71,6 +83,8 @@ list(
     readr::read_csv(fs::path("config", "public_input_data_catalogue.csv")) |>
       tibble::as_tibble()
   ),
+  
+  # Input ----
   
   tar_target(
     download_public_datasets,
@@ -82,14 +96,12 @@ list(
     format = "file"
   ),
   
-  tar_target(
-    spatial_data_input_list,
-    config$spatial_input_datasets
-  ),
+  # Processing ----
   
   tar_target(
     process_spatial_datasets,
-    process_spatial_dataset(spatial_data_input_list),
+    process_spatial_dataset(dataset = spatial_data_input_list,
+                            extent_lst = common_extent),
     pattern = map(spatial_data_input_list),
     format = "file"
   )

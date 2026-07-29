@@ -16,18 +16,19 @@
 #' the supplied dataset name.
 #'
 #' @param dataset_name A character scalar identifying the dataset to process.
+#' @param extent_lst A list specifying xmin, xmax, ymin, ymax
 #'
 #' @return A character vector of file paths created by the processing function.
 #' Intended for use with `targets` file targets (`format = "file"`)
 
 
-process_spatial_dataset <- function(dataset_name){
+process_spatial_dataset <- function(dataset_name, extent_lst){
   
   switch(
     dataset_name,
-    aitkenhead_19_peat_depth = process_aitkenhead_19_peat_depth(),
-    gagkas_lilly_24 = process_gagkas_lilly_24(),
-    robb_et_al_25_peat_depth = process_robb_et_al_25_peat_depth(),
+    aitkenhead_19_peat_depth = process_aitkenhead_19_peat_depth(extent_lst),
+    gagkas_lilly_24 = process_gagkas_lilly_24(extent_lst),
+    robb_et_al_25_peat_depth = process_robb_et_al_25_peat_depth(extent_lst),
     stop("No processor defined for ", dataset_name)
   )
 }
@@ -96,7 +97,7 @@ discretise_peat_depth <- function(x){
 #' @return A character scalar giving the path to the processed raster file.
 #' Intended for use with `targets` file targets (`format = "file"`).
 
-process_aitkenhead_19_peat_depth <- function() {
+process_aitkenhead_19_peat_depth <- function(extent_lst) {
   
   zip_file_path <- fs::path("data",
                             "raw",
@@ -118,7 +119,13 @@ process_aitkenhead_19_peat_depth <- function() {
   )
   
   r <- discretise_peat_depth(r) |> 
-    terra::extend(terra::ext(0, 500000, 500000, 1300000)) # common extent
+    terra::extend(
+      terra::ext( # common extent
+        extent_lst$xmin,
+        extent_lst$xmax,
+        extent_lst$ymin,
+        extent_lst$ymax
+      ))
   
   output_path <- fs::path("data", "processed", "aitkenhead_19_peat_depth_rast_cat_100.tif")
   
