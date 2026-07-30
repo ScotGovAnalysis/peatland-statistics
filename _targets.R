@@ -64,8 +64,19 @@ list(
   # Configuration ----
   
   tar_target(
+    config_file,
+    fs::path("config", "config.yml"),
+    format = "file"
+  ),
+  
+  tar_target(
     config,
-    yaml::read_yaml(fs::path("config", "config.yml"))
+    yaml::read_yaml(config_file)
+  ),
+  
+  tar_target(
+    terra_options,
+    config$terra_options
   ),
   
   tar_target(
@@ -74,8 +85,22 @@ list(
   ),
   
   tar_target(
+    agreement_analysis_filepath_list,
+    fs::path(
+      "data",
+      "processed",
+      config$agreement_analysis_datasets
+    )
+  ),
+  
+  tar_target(
     common_extent,
     config$spatial_parameters$common_extent
+  ),
+  
+  tar_target(
+    common_resolution,
+    config$spatial_parameters$common_resolution
   ),
   
   tar_target(
@@ -101,9 +126,22 @@ list(
   tar_target(
     process_spatial_datasets,
     process_spatial_dataset(dataset = spatial_data_input_list,
-                            extent_lst = common_extent),
+                            extent_list = common_extent,
+                            resolution = common_resolution,
+                            terra_options = terra_options),
     pattern = map(spatial_data_input_list),
     format = "file"
+  ),
+
+  # Analysis ----
+  
+  tar_target(
+    agreement_map,
+    create_agreement_map(
+      raster_paths = agreement_analysis_filepath_list
+    ),
+    format = "file"
   )
+
   
 )
