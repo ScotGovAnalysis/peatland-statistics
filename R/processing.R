@@ -27,41 +27,6 @@ set_terra_options <- function(terra_options) {
   invisible(NULL)
 }
 
-# dispatch ---------------------------------------------------------------------
-
-#' Process a spatial dataset
-#'
-#' Dispatches to the appropriate dataset-specific processing function based on
-#' the supplied dataset name.
-#'
-#' @param dataset_name A character scalar identifying the dataset to process.
-#' @param extent_list A list specifying xmin, xmax, ymin, ymax
-#'
-#' @return A character vector of file paths created by the processing function.
-#' Intended for use with `targets` file targets (`format = "file"`)
-
-
-process_spatial_dataset <- function(dataset_name,
-                                    extent_list,
-                                    resolution,
-                                    terra_options){
-  
-  set_terra_options(terra_options)
-  
-  fs::dir_create(
-    fs::path("data", "processed")
-  )
-  
-  processor <- get(
-    paste0("process_", dataset_name),
-    mode = "function"
-  )
-  
-  processor(
-    extent_list = extent_list,
-    resolution = resolution
-  )
-}
 
 # spatial helper functions -----------------------------------------------------
 
@@ -211,12 +176,9 @@ discretise_peat_depth <- function(x){
 #' @return A character scalar giving the path to the processed raster file.
 #' Intended for use with `targets` file targets (`format = "file"`).
 #'
-process_aitkenhead_19_pd <- function(extent_list, resolution) {
+process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution) {
   
-  zip_file_path <- fs::path("data",
-                            "raw",
-                            "aitkenhead_19_pd",
-                            "aitkenhead_19_peat_depth.zip")
+  zip_file_path <- source_path
   
   extract_dir <- fs::dir_create(
     fs::path(tempdir(), "aitkenhead_19_peat_depth")
@@ -267,15 +229,10 @@ process_aitkenhead_19_pd <- function(extent_list, resolution) {
 #' @return A character scalar giving the path to the processed raster file.
 #' Intended for use with `targets` file targets (`format = "file"`).
 #'
-process_gagkas_24_psum <- function(extent_list, resolution) {
-  
-  input_file_path <- fs::path("data",
-                            "raw",
-                            "gagkas_24_psum",
-                            "DSM_Peat_m1_Psum.tif")
+process_gagkas_24_psum_std <- function(source_path, extent_list, resolution) {
   
   r <- terra::rast(
-    input_file_path
+    source_path
   ) 
     
   r <- terra::ifel(r == 1, 50, 0)
@@ -353,13 +310,11 @@ process_robb_25_pd <- function(extent_list, resolution) {
   output_path
 }
 
-process_int_dzs <- function(extent_list = NULL,
+process_int_dzs_bdry <- function(source_path,
+                                 extent_list = NULL,
                             resolution = NULL){
   
-  zip_file_path <- fs::path("data",
-                            "raw",
-                            "int_dzs",
-                            "int_dzs.zip")
+  zip_file_path <- source_path[[1]]
   
   extract_dir <- fs::dir_create(
     fs::path(tempdir(), "int_dzs")

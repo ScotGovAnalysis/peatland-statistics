@@ -6,6 +6,24 @@
 # "public_input_data_catalogue.csv" in the config folder.
 
 
+download_dataset <- function(
+    input_dataset_name,
+    public_data_catalogue){
+  
+  dataset_args <-
+    public_data_catalogue |>
+    dplyr::filter(
+      dataset == input_dataset_name
+    ) |>
+    dplyr::slice(1) |>
+    as.list()
+  
+  do.call(
+    download_dataset_and_metadata,
+    dataset_args
+  )
+  
+}
 
 #' Download a file
 #'
@@ -122,4 +140,21 @@ download_dataset_and_metadata <- function(
   }
   
   downloaded_files
+}
+
+verify_dataset <- function(input_dataset_name, filename) {
+  
+  path <- fs::path("data", "raw", input_dataset_name, filename)
+  
+  if (!fs::file_exists(path)) {
+    cli::cli_abort(
+      "File not found: {.file {path}}"
+    )
+  }
+  
+  cli::cli_alert_success(
+    "Verified {.file {path}}"
+  )
+  
+  path
 }

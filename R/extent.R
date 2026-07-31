@@ -19,12 +19,13 @@
 #' @return A character scalar containing the output file path.
 #'
 create_agreement_map <- function(
-    raster_paths,
+    input_paths,
     peat_class = 6,
     boundary_path
 ) {
   
-  s <- terra::rast(raster_paths)
+  
+  s <- terra::rast(input_paths)
 
   message("Creating agreement raster")
   
