@@ -48,15 +48,18 @@ process_spatial_dataset <- function(dataset_name,
   
   set_terra_options(terra_options)
   
-  switch(
-    dataset_name,
-    aitkenhead_19_pd = process_aitkenhead_19_pd(extent_list,
-                                                resolution),
-    gagkas_24_psum = process_gagkas_24_psum(extent_list,
-                                                  resolution),
-    robb_25_pd = process_robb_25_pd(extent_list,
-                                                  resolution),
-    stop("No processor defined for ", dataset_name)
+  fs::dir_create(
+    fs::path("data", "processed")
+  )
+  
+  processor <- get(
+    paste0("process_", dataset_name),
+    mode = "function"
+  )
+  
+  processor(
+    extent_list = extent_list,
+    resolution = resolution
   )
 }
 
@@ -233,10 +236,6 @@ process_aitkenhead_19_pd <- function(extent_list, resolution) {
   
   output_path <- fs::path("data", "processed", "aitkenhead_19_pd_std.tif")
   
-  fs::dir_create(
-    fs::path("data", "processed")
-  )
-  
   terra::writeRaster(
     r,
     filename = output_path,
@@ -287,10 +286,6 @@ process_gagkas_24_psum <- function(extent_list, resolution) {
     discretise_peat_depth()
   
   output_path <- fs::path("data", "processed", "gagkas_24_psum_std.tif")
-  
-  fs::dir_create(
-    fs::path("data", "processed")
-  )
   
   terra::writeRaster(
     r,
@@ -344,10 +339,6 @@ process_robb_25_pd <- function(extent_list, resolution) {
   
   output_path <- fs::path("data", "processed", "robb_25_pd_std.tif")
   
-  fs::dir_create(
-    fs::path("data", "processed")
-  )
-  
   terra::writeRaster(
     r,
     filename = output_path,
@@ -362,3 +353,34 @@ process_robb_25_pd <- function(extent_list, resolution) {
   output_path
 }
 
+process_int_dzs <- function(extent_list = NULL,
+                            resolution = NULL){
+  
+  zip_file_path <- fs::path("data",
+                            "raw",
+                            "int_dzs",
+                            "int_dzs.zip")
+  
+  extract_dir <- fs::dir_create(
+    fs::path(tempdir(), "int_dzs")
+  )
+  
+  utils::unzip(
+    zipfile = zip_file_path,
+    exdir = extract_dir
+  )
+  
+  v <- terra::vect(
+    fs::path(extract_dir, "SG_IntermediateZoneBdry_2022_MHW.shp")
+  )
+  
+  output_path <- fs::path("data", "processed", "int_dzs.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+  
+  output_path
+}
