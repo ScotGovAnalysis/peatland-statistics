@@ -101,30 +101,25 @@ create_agreement_map <- function(
 
 summarise_categories <- function(raster, geometry) {
   
-  cell_area_m2 <- prod(terra::res(raster))
-  
-  exactextractr::exact_extract(
+  frac <- exactextractr::exact_extract(
     x = raster,
     y = geometry,
-    fun = function(values, coverage_fraction) {
-      tibble::tibble(
-        value = values,
-        area_ha = coverage_fraction * cell_area_m2 / 10000
-      ) |>
-        dplyr::filter(!is.na(value)) |>
-        dplyr::summarise(
-          area = sum(area_ha),
-          .by = value
-        ) |>
-        tidyr::pivot_wider(
-          names_from = value,
-          values_from = area,
-          names_prefix = "class_",
-          values_fill = 0
-        )
-    },
+    fun = "frac",
     progress = TRUE
-  ) |>
-    dplyr::bind_rows(.id = "feature_id") |>
-    dplyr::mutate(feature_id = as.integer(feature_id))
+  )
+  
+  area_ha <- sf::st_area(geometry, unit = "ha") |> 
+    as.numeric()
+  
+  output <- frac |> mutate(
+    across(everything(), ~ .x * area_ha)
+  ) |> 
+    rename_with(.fn = ~stringr::str_replace(.x, "frac", "class")) |> 
+    tibble::rownames_to_column(var = "feature_id") |> 
+    pivot_longer(cols = -feature_id,
+                 names_to = "class",
+                 values_to = "area_ha")
+  
+  
+  output
 }

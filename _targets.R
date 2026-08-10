@@ -7,6 +7,8 @@
 library(targets)
 library(crew)
 library(tarchetypes)
+library(dplyr)
+library(tidyr)
 # Load other packages as needed.
 
 # Global config ----
