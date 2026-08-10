@@ -11,6 +11,14 @@ may change at any time, and the project is not considered stable.
 
 Dates follow YYYY-MM-DD format.
 
+## 0.1.4 2026-08-10
+
+### Added
+- separate script, configure_pipeline.R, to define complex targets
+
+### Changed
+- refined processing functions and static branching
+
 ## 0.1.3 2026-07-28
 
 ### Added

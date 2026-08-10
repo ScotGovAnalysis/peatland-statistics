@@ -30,6 +30,29 @@ set_terra_options <- function(terra_options) {
 
 # spatial helper functions -----------------------------------------------------
 
+#' Extract a ZIP archive to a temporary directory
+#'
+#' Creates a unique temporary directory, extracts the contents of a ZIP archive
+#' into it, and returns the path to the extraction directory.
+#'
+#' @param zipfile Character scalar. Path to the ZIP archive.
+#'
+#' @return A character scalar giving the path to the directory containing the
+#' extracted files.
+#'
+unzip_to_temp <- function(zipfile) {
+  extract_dir <- fs::dir_create(
+    tempfile(pattern = "unzip_", tmpdir = tempdir())
+  )
+  
+  utils::unzip(
+    zipfile = zipfile,
+    exdir = extract_dir
+  )
+  
+  extract_dir
+}
+
 #' Create a SpatExtent from a named list
 #'
 #' Converts a list containing `xmin`, `xmax`, `ymin`, and `ymax`
@@ -178,16 +201,7 @@ discretise_peat_depth <- function(x){
 #'
 process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution) {
   
-  zip_file_path <- source_path
-  
-  extract_dir <- fs::dir_create(
-    fs::path(tempdir(), "aitkenhead_19_peat_depth")
-  )
-  
-  utils::unzip(
-    zipfile = zip_file_path,
-    exdir = extract_dir
-  )
+  extract_dir <- unzip_to_temp(source_path)
   
   r <- terra::rast(
     fs::path(extract_dir, "peat_depth.tif")
@@ -204,7 +218,7 @@ process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution) {
     datatype = "INT1U",
     overwrite = TRUE,
     gdal = c(
-      "COMPRESS=ZSTD",
+      "COMPRESS=None",
       "TILED=YES"
     )
   )
@@ -250,7 +264,7 @@ process_gagkas_24_psum_std <- function(source_path, extent_list, resolution) {
     datatype = "INT1U",
     overwrite = TRUE,
     gdal = c(
-      "COMPRESS=ZSTD",
+      "COMPRESS=None",
       "TILED=YES"
     )
   )
@@ -280,15 +294,10 @@ process_gagkas_24_psum_std <- function(source_path, extent_list, resolution) {
 #' @return A character scalar giving the path to the processed raster file.
 #' Intended for use with `targets` file targets (`format = "file"`).
 #'
-process_robb_25_pd <- function(extent_list, resolution) {
-  
-  input_file_path <- fs::path("data",
-                            "raw",
-                            "robb_25_pd",
-                            "PeatThickness.tif")
+process_robb_25_pd <- function(source_path, extent_list, resolution) {
   
   r <- terra::rast(
-    input_file_path
+    source_path
   ) |> 
     standardise_ext(extent_list) |> 
     standardise_res(resolution) |> 
@@ -302,7 +311,7 @@ process_robb_25_pd <- function(extent_list, resolution) {
     datatype = "INT1U",
     overwrite = TRUE,
     gdal = c(
-      "COMPRESS=NONE",
+      "COMPRESS=None",
       "TILED=YES"
     )
   )
@@ -310,20 +319,24 @@ process_robb_25_pd <- function(extent_list, resolution) {
   output_path
 }
 
-process_int_dzs_bdry <- function(source_path,
-                                 extent_list = NULL,
-                            resolution = NULL){
+#' Process Intermediate Zone boundary dataset
+#'
+#' Extracts the Intermediate Zone boundary dataset from a ZIP archive, reads
+#' the boundary geometry, and writes it to a GeoPackage for use in downstream
+#' analyses.
+#'
+#' @param source_path Character vector containing the path to the downloaded
+#' ZIP archive. The first element is assumed to be the archive containing the
+#' boundary dataset.
+#'
+#' @return A character scalar giving the path to the processed GeoPackage file.
+#' Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_int_dzs_bdry <- function(source_path){
   
   zip_file_path <- source_path[[1]]
   
-  extract_dir <- fs::dir_create(
-    fs::path(tempdir(), "int_dzs")
-  )
-  
-  utils::unzip(
-    zipfile = zip_file_path,
-    exdir = extract_dir
-  )
+  extract_dir <- unzip_to_temp(zip_file_path)
   
   v <- terra::vect(
     fs::path(extract_dir, "SG_IntermediateZoneBdry_2022_MHW.shp")
