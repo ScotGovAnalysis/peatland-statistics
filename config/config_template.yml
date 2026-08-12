@@ -1,8 +1,47 @@
-spatial_input_datasets:
-  - aitkenhead_19_peat_depth
+crew:
+  workers: 8
+  seconds_idle: 300
+
 spatial_parameters:
   common_extent:
     xmin: 0
     xmax: 500000
     ymin: 500000
-    ymax: 1300000
+    ymax: 1250000
+  common_resolution: 200
+
+terra_options:
+  memfrac: 0.8
+  memmax: 50
+  
+input_datasets:
+  aitkenhead_19_pd:
+    fun: download
+  gagkas_24_psum:
+    fun: verify
+    filename: DSM_Peat_m1_Psum.tif
+  int_dzs:
+    fun: download
+  las:
+    fun: download
+    
+processed_datasets:
+  aitkenhead_19_pd_std:
+    source_dataset: aitkenhead_19_pd
+    type: extent
+  gagkas_24_psum_std:
+    source_dataset: gagkas_24_psum
+    type: extent
+  int_dzs_bdry:
+    source_dataset: int_dzs
+    type: boundary
+  las_bdry:
+    source_dataset: las
+    type: boundary
+ 
+agreement_analysis:
+  input_datasets:
+    - aitkenhead_19_pd_std
+    - gagkas_24_psum_std
+  peat_class: 6
+  boundary: int_dzs.gpkg
