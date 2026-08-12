@@ -1,0 +1,8 @@
+spatial_input_datasets:
+  - aitkenhead_19_peat_depth
+spatial_parameters:
+  common_extent:
+    xmin: 0
+    xmax: 500000
+    ymin: 500000
+    ymax: 1300000

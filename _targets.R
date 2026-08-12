@@ -5,93 +5,128 @@
 
 # Load packages required to define the pipeline:
 library(targets)
-# library(tarchetypes) # Load other packages as needed.
+library(crew)
+library(tarchetypes)
+
+# Load other packages as needed.
+
+# Global config ----
+
+global_config <- yaml::read_yaml("config/config.yml")
 
 # Set target options:
-# tar_option_set(
-#   packages = c("tibble") # Packages that your targets need for their tasks.
-#   # format = "qs", # Optionally set the default storage format. qs is fast.
-#   #
-#   # Pipelines that take a long time to run may benefit from
-#   # optional distributed computing. To use this capability
-#   # in tar_make(), supply a {crew} controller
-#   # as discussed at https://books.ropensci.org/targets/crew.html.
-#   # Choose a controller that suits your needs. For example, the following
-#   # sets a controller that scales up to a maximum of two workers
-#   # which run as local R processes. Each worker launches when there is work
-#   # to do and exits if 60 seconds pass with no tasks to run.
-#   #
-#   #   controller = crew::crew_controller_local(workers = 2, seconds_idle = 60)
-#   #
-#   # Alternatively, if you want workers to run on a high-performance computing
-#   # cluster, select a controller from the {crew.cluster} package.
-#   # For the cloud, see plugin packages like {crew.aws.batch}.
-#   # The following example is a controller for Sun Grid Engine (SGE).
-#   #
-#   #   controller = crew.cluster::crew_controller_sge(
-#   #     # Number of workers that the pipeline can scale up to:
-#   #     workers = 10,
-#   #     # It is recommended to set an idle time so workers can shut themselves
-#   #     # down if they are not running tasks.
-#   #     seconds_idle = 120,
-#   #     # Many clusters install R as an environment module, and you can load it
-#   #     # with the script_lines argument. To select a specific verison of R,
-#   #     # you may need to include a version string, e.g. "module load R/4.3.2".
-#   #     # Check with your system administrator if you are unsure.
-#   #     script_lines = "module load R"
-#   #   )
-#   #
-#   # Set other options as needed.
-# )
 
 tar_option_set(
   
   packages = c(
     "readr",
     "purrr",
-    "tibble"
+    "tibble",
+    "dplyr",
+    "tidyr"
+  ),
+  
+  controller = crew::crew_controller_local(
+    workers = global_config$crew$workers,
+    seconds_idle = global_config$crew$seconds_idle
   )
 )
-
 
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
 # tar_source("other_functions.R") # Source other scripts as needed.
 
 # Replace the target list below with your own:
+
+# Simple targets are defined in the list below - more complex targets are defined
+# in configure_pipeline.R
+
 list(
   
+  # Configuration ----
+  
+  tar_target(
+    config_file,
+    fs::path("config", "config.yml"),
+    format = "file"
+  ),
+
   tar_target(
     config,
-    config::get(file = fs::path("config", "config.yml"))
+    yaml::read_yaml(config_file)
   ),
   
   tar_target(
+    common_extent,
+    config$spatial_parameters$common_extent
+  ),
+
+  tar_target(
+    common_resolution,
+    config$spatial_parameters$common_resolution
+  ),
+  
+  tar_target(
+    agreement_analysis_peat_class,
+    config$agreement_analysis$peat_class
+  ),
+  
+
+  # Input ----
+  
+  tar_target(
+    public_data_catalogue_file,
+    fs::path("config", "public_input_data_catalogue.csv"),
+    format = "file"
+  ),
+
+  tar_target(
     public_data_catalogue,
-    readr::read_csv(fs::path("config", "public_input_data_catalogue.csv")) |>
+    readr::read_csv(public_data_catalogue_file) |>
       tibble::as_tibble()
   ),
   
+  download_targets,
+  verify_targets,
+  
+  # Processing ----
+  
+  processed_targets,
+  
+  tar_target_raw(
+    name = "extent_targets",
+    command = extent_targets_expr
+  ),
+  
+  tar_target_raw(
+    name = "boundary_targets",
+    command = boundary_targets_expr
+  ),
+  
   tar_target(
-    download_public_datasets,
-    do.call(
-      download_dataset_and_metadata,
-      public_data_catalogue
+    extent_boundary_combinations,
+    tidyr::crossing(
+      extent_path = extent_targets,
+      boundary_path = boundary_targets
+    )
+  ),
+  
+  # Analysis ----
+  
+  agreement_target,
+  
+  tar_target(
+    extent_analysis,
+    summarise_extent(
+      extent_path = extent_boundary_combinations$extent_path,
+      boundary_path = extent_boundary_combinations$boundary_path
     ),
-    pattern = map(public_data_catalogue),
-    format = "file"
+    pattern = map(extent_boundary_combinations)
   ),
   
   tar_target(
-    spatial_data_input_list,
-    config$spatial_input_datasets
-  ),
-  
-  tar_target(
-    process_spatial_datasets,
-    process_spatial_dataset(spatial_data_input_list),
-    pattern = map(spatial_data_input_list),
-    format = "file"
+    extent_analysis_combined,
+    dplyr::bind_rows(extent_analysis)
   )
   
 )

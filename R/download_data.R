@@ -6,6 +6,24 @@
 # "public_input_data_catalogue.csv" in the config folder.
 
 
+download_dataset <- function(
+    input_dataset_name,
+    public_data_catalogue){
+  
+  dataset_args <-
+    public_data_catalogue |>
+    dplyr::filter(
+      dataset == input_dataset_name
+    ) |>
+    dplyr::slice(1) |>
+    as.list()
+  
+  do.call(
+    download_dataset_and_metadata,
+    dataset_args
+  )
+  
+}
 
 #' Download a file
 #'
@@ -122,4 +140,34 @@ download_dataset_and_metadata <- function(
   }
   
   downloaded_files
+}
+
+#' Verify that an input dataset file exists
+#'
+#' Constructs the expected path to a raw input dataset file and checks
+#' that it exists. If the file is not found, an error is raised. If the
+#' file exists, a success message is displayed and the file path is returned.
+#'
+#' @param input_dataset_name A character string specifying the dataset
+#' subdirectory within `data/raw`.
+#' @param filename A character string containing the name of the file to
+#' verify.
+#'
+#' @return A file path object corresponding to the verified file location.
+#'
+verify_dataset <- function(input_dataset_name, filename) {
+  
+  path <- fs::path("data", "raw", input_dataset_name, filename)
+  
+  if (!fs::file_exists(path)) {
+    cli::cli_abort(
+      "File not found: {.file {path}}"
+    )
+  }
+  
+  cli::cli_alert_success(
+    "Verified {.file {path}}"
+  )
+  
+  path
 }
