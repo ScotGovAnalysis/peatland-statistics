@@ -115,3 +115,30 @@ agreement_target <- tar_target_raw(
   ),
   format = "file"
 )
+
+# Extent ----
+
+extent_targets_expr <- tibble::enframe(
+  global_config$processed_datasets,
+  name = "processed_dataset_name",
+  value = "metadata"
+) |>
+  tidyr::unnest_wider(metadata) |>
+  dplyr::filter(type == "extent") |>
+  dplyr::pull(processed_dataset_name) |>
+  lapply(as.name) |>
+  (\(x) as.call(c(as.name("c"), x)))()
+
+
+boundary_targets_expr <- tibble::enframe(
+  global_config$processed_datasets,
+  name = "processed_dataset_name",
+  value = "metadata"
+) |>
+  tidyr::unnest_wider(metadata) |>
+  dplyr::filter(type == "boundary") |>
+  dplyr::pull(processed_dataset_name) |>
+  lapply(as.name) |>
+  (\(x) as.call(c(as.name("c"), x)))()
+
+

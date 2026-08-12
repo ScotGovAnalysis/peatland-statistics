@@ -7,8 +7,7 @@
 library(targets)
 library(crew)
 library(tarchetypes)
-library(dplyr)
-library(tidyr)
+
 # Load other packages as needed.
 
 # Global config ----
@@ -22,7 +21,9 @@ tar_option_set(
   packages = c(
     "readr",
     "purrr",
-    "tibble"
+    "tibble",
+    "dplyr",
+    "tidyr"
   ),
   
   controller = crew::crew_controller_local(
@@ -69,6 +70,7 @@ list(
     agreement_analysis_peat_class,
     config$agreement_analysis$peat_class
   ),
+  
 
   # Input ----
   
@@ -91,8 +93,40 @@ list(
   
   processed_targets,
   
+  tar_target_raw(
+    name = "extent_targets",
+    command = extent_targets_expr
+  ),
+  
+  tar_target_raw(
+    name = "boundary_targets",
+    command = boundary_targets_expr
+  ),
+  
+  tar_target(
+    extent_boundary_combinations,
+    tidyr::crossing(
+      extent_path = extent_targets,
+      boundary_path = boundary_targets
+    )
+  ),
+  
   # Analysis ----
   
-  agreement_target
+  agreement_target,
+  
+  tar_target(
+    extent_analysis,
+    summarise_extent(
+      extent_path = extent_boundary_combinations$extent_path,
+      boundary_path = extent_boundary_combinations$boundary_path
+    ),
+    pattern = map(extent_boundary_combinations)
+  ),
+  
+  tar_target(
+    extent_analysis_combined,
+    dplyr::bind_rows(extent_analysis)
+  )
   
 )
