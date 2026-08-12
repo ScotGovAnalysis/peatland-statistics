@@ -136,41 +136,41 @@ standardise_ext <- function(r, common_extent) {
   
 }
 
-#' Discretise peat depth values into categorical classes
+#' Categorise peat depth values into discrete depth classes
 #'
-#' Reclassifies a peat depth raster into integer classes according to the
-#' following scheme:
+#' Reclassifies a peat depth raster into integer depth classes. Missing
+#' values and depths equal to zero are assigned to class `0`. Positive
+#' depth values are classified according to the following scheme:
 #'
-#' 0 = depth of 0,
-#' 1 = depth from 0 to less than 10,
-#' 2 = depth from 10 to less than 20,
-#' 3 = depth from 20 to less than 30,
-#' 4 = depth from 30 to less than 40,
-#' 5 = depth from 40 to less than 50,
-#' 6 = depth of 50 or greater.
+#' * 0 = missing values and depth of 0
+#' * 1 = depth from 0 to less than 10
+#' * 2 = depth from 10 to less than 20
+#' * 3 = depth from 20 to less than 30
+#' * 4 = depth from 30 to less than 40
+#' * 5 = depth from 40 to less than 50
+#' * 6 = depth of 50 or greater
 #'
 #' Class intervals are left-closed and right-open (`[a, b)`).
 #'
 #' @param x A `terra::SpatRaster` containing peat depth values.
 #'
-#' @return A `terra::SpatRaster` containing peat depth classes represented
-#' by the integers 0 to 6.
-discretise_peat_depth <- function(x){
-  
-  terra::ifel(x == 0, 0,
-    terra::classify(
-      x,
-      rbind(c(0, 10, 1),
-        c(10, 20, 2),
-        c(20, 30, 3),
-        c(30, 40, 4),
-        c(40, 50, 5),
-        c(50, Inf, 6)
-      ),
-      right = FALSE # intervals left closed, right open [a,b)
-    )
-  )
-  
+#' @return A `terra::SpatRaster` containing integer peat depth classes
+#' from 0 to 6.
+discretise_peat_depth <- function(x) {
+  terra::ifel(is.na(x), 0,
+              terra::ifel(x == 0, 0, 
+                          terra::classify(
+                            x,
+                            rbind(
+                              c(0, 10, 1),
+                              c(10, 20, 2),
+                              c(20, 30, 3),
+                              c(30, 40, 4),
+                              c(40, 50, 5),
+                              c(50, Inf, 6)
+                            ),
+                            right = FALSE # intervals left closed, right open [a,b)
+                          )))
 }
 
 
@@ -178,27 +178,27 @@ discretise_peat_depth <- function(x){
 
 #' Process the Aitkenhead (2019) peat depth dataset
 #'
-#' Extracts the source raster from a ZIP archive, standardises to common extent
-#' and resolution, discretises peat depth, and writes the result to a 
-#' compressed GeoTIFF.
-#' 
-#' Original resolution: 100 m
+#' Extracts the source raster from a ZIP archive, standardises it to a
+#' common spatial extent and resolution, categorises peat depth values
+#' using [discretise_peat_depth()], and writes the result to a GeoTIFF.
 #'
-#' The output raster uses the following peat depth classes:
-#' 0 = depth of 0,
-#' 1 = depth from 0 to less than 10,
-#' 2 = depth from 10 to less than 20,
-#' 3 = depth from 20 to less than 30,
-#' 4 = depth from 30 to less than 40,
-#' 5 = depth from 40 to less than 50,
-#' 6 = depth of 50 or greater.
+#' Original resolution: 100 m.
 #'
-#' The output is stored as an unsigned 8-bit integer raster and compressed
-#' using ZSTD compression.
+#' The output raster contains peat depth classes represented by the
+#' integers 0 to 6, where higher values correspond to greater peat depth.
+#'
+#' The output is stored as an unsigned 8-bit integer raster with tiled
+#' storage.
+#'
+#' @param source_path Path to the ZIP archive containing the source peat
+#'   depth raster.
+#' @param extent_list A list defining the target spatial extent passed to
+#'   [standardise_ext()].
+#' @param resolution Target raster resolution passed to
+#'   [standardise_res()].
 #'
 #' @return A character scalar giving the path to the processed raster file.
-#' Intended for use with `targets` file targets (`format = "file"`).
-#'
+#'   Intended for use with `targets` file targets (`format = "file"`).
 process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution) {
   
   extract_dir <- unzip_to_temp(source_path)
@@ -226,28 +226,33 @@ process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution) {
   output_path
 }
 
-#' Process the Gagkas and Lilly (2024) peat depth dataset
+#' Process the Gagkas and Lilly (2024) peat soil dataset
 #'
-#' Standardises to common extent and resolution, discretises peat depth, 
-#' and writes the result to a compressed GeoTIFF.
-#' 
-#' Original resolution: 50 m
+#' Reads the source raster, converts peat soil presence values to a nominal
+#' peat depth of 50 cm and all other values to 0 cm, standardises the raster
+#' to a common spatial extent and resolution, categorises values using
+#' [discretise_peat_depth()], and writes the result to a GeoTIFF.
 #'
-#' The output raster uses the following peat depth classes:
-#' 0 = depth of 0,
-#' 6 = depth of 50 or greater.
+#' Original resolution: 50 m.
 #'
-#' The output is stored as an unsigned 8-bit integer raster and compressed
-#' using ZSTD compression.
+#' The output raster contains peat depth classes represented by the
+#' integers 0 to 6, where higher values correspond to greater peat depth.
+#'
+#' The output is stored as an unsigned 8-bit integer raster with tiled
+#' storage.
+#'
+#' @param source_path Path to the source raster file.
+#' @param extent_list A list defining the target spatial extent passed to
+#'   [standardise_ext()].
+#' @param resolution Target raster resolution passed to
+#'   [standardise_res()].
 #'
 #' @return A character scalar giving the path to the processed raster file.
-#' Intended for use with `targets` file targets (`format = "file"`).
-#'
+#'   Intended for use with `targets` file targets (`format = "file"`).
+#'   
 process_gagkas_24_psum_std <- function(source_path, extent_list, resolution) {
   
-  r <- terra::rast(
-    source_path
-  ) 
+  r <- terra::rast(source_path) 
     
   r <- terra::ifel(r == 1, 50, 0)
   
@@ -279,17 +284,10 @@ process_gagkas_24_psum_std <- function(source_path, extent_list, resolution) {
 #' 
 #' Original resolution: 10 m
 #'
-#' The output raster uses the following peat depth classes:
-#' 0 = depth of 0,
-#' 1 = depth from 0 to less than 10,
-#' 2 = depth from 10 to less than 20,
-#' 3 = depth from 20 to less than 30,
-#' 4 = depth from 30 to less than 40,
-#' 5 = depth from 40 to less than 50,
-#' 6 = depth of 50 or greater.
+#' The output raster contains peat depth classes represented by the
+#' integers 0 to 6, where higher values correspond to greater peat depth.
 #'
-#' The output is stored as an unsigned 8-bit integer raster and compressed
-#' using ZSTD compression.
+#' The output is stored as an unsigned 8-bit integer raster with tiled storage.
 #'
 #' @return A character scalar giving the path to the processed raster file.
 #' Intended for use with `targets` file targets (`format = "file"`).
@@ -321,16 +319,17 @@ process_robb_25_pd <- function(source_path, extent_list, resolution) {
 
 #' Process Intermediate Zone boundary dataset
 #'
-#' Extracts the Intermediate Zone boundary dataset from a ZIP archive, reads
-#' the boundary geometry, and writes it to a GeoPackage for use in downstream
-#' analyses.
+#' Extracts the Intermediate Zone boundary dataset from a ZIP archive,
+#' reads the boundary geometries, standardises the boundary attributes to
+#' a common schema (`boundary_class` and `boundary_name`), and writes the
+#' result to a GeoPackage for use in downstream analyses.
 #'
 #' @param source_path Character vector containing the path to the downloaded
-#' ZIP archive. The first element is assumed to be the archive containing the
-#' boundary dataset.
+#'   ZIP archive. The first element is assumed to be the archive containing
+#'   the boundary dataset.
 #'
-#' @return A character scalar giving the path to the processed GeoPackage file.
-#' Intended for use with `targets` file targets (`format = "file"`).
+#' @return A character scalar giving the path to the processed GeoPackage
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
 #'
 process_int_dzs_bdry <- function(source_path){
   
@@ -342,7 +341,54 @@ process_int_dzs_bdry <- function(source_path){
     fs::path(extract_dir, "SG_IntermediateZoneBdry_2022_MHW.shp")
   )
   
+  v$boundary_class <- "intermediate_datazone"
+  v$boundary_name <- v$IZName
+  
+  v <- v[, c("boundary_class", "boundary_name")]
+  
+  
+  
   output_path <- fs::path("data", "processed", "int_dzs.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+  
+  output_path
+}
+
+#' Process local authority boundary dataset
+#'
+#' Extracts the local authority boundary dataset from a ZIP archive,
+#' reads the boundary geometries, standardises the boundary attributes to
+#' a common schema (`boundary_class` and `boundary_name`), and writes the
+#' result to a GeoPackage for use in downstream analyses.
+#'
+#' @param source_path Character vector containing the path to the downloaded
+#'   ZIP archive. The first element is assumed to be the archive containing
+#'   the boundary dataset.
+#'
+#' @return A character scalar giving the path to the processed GeoPackage
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_las_bdry <- function(source_path){
+  
+  zip_file_path <- source_path[[1]]
+  
+  extract_dir <- unzip_to_temp(zip_file_path)
+  
+  v <- terra::vect(
+    fs::path(extract_dir, "pub_las.shp")
+  )
+  
+  v$boundary_class <- "local_authority"
+  v$boundary_name <- v$local_auth
+  
+  v <- v[, c("boundary_class", "boundary_name")]
+  
+  output_path <- fs::path("data", "processed", "las.gpkg")
   
   terra::writeVector(
     v,
