@@ -86,39 +86,65 @@ create_agreement_map <- function(
   
 }
 
-#' Summarise categorical raster areas within geometries
+#' Summarise habitat extent within boundary geometries
 #'
-#' Uses exact extraction to calculate the area of each raster category
-#' within one or more geometries. Results are returned in wide format with
-#' one row per geometry and one column per raster class.
+#' Reads an extent raster and a boundary dataset, calculates the area of
+#' each raster class within each boundary using exact extraction, and
+#' derives summary areas for the `pd30`, `pd40`, and `pd50` depth classes.
+#' Results are returned in long format with one row per boundary and depth
+#' class combination.
 #'
-#' @param raster A single-layer categorical SpatRaster.
-#' @param geometry An sf, sfc, or SpatVector object containing the
-#'   geometries to summarise.
+#' @param extent_path Path to a categorical extent raster.
+#' @param boundary_path Path to a vector boundary dataset readable by
+#' [sf::st_read()].
 #'
-#' @return A tibble with one row per geometry and columns named
-#'   `class_<value>` containing areas hectares
-
-summarise_categories <- function(raster, geometry) {
+#' @return A tibble with the following columns:
+#' 
+#' boundary_class - High level boundary classification.
+#' boundary_name - Boundary name
+#' extent_source - Name of the peat extentsource.
+#' depth_class - One of `pd30`, `pd40`, or `pd50`.
+#' area_ha - Area within the boundary, in hectares.
+#' bdry_area_ha - Total area of the boundary
+summarise_extent <- function(extent_path, boundary_path) {
+  
+  raster <- terra::rast(extent_path)
+  geometry <- sf::st_read(boundary_path) |>
+    mutate(bdry_area_ha = sf::st_area(geom) |> as.numeric() / 10000)
+  
+  extent_name <- extent_path |> stringr::str_remove("data/processed/") |>
+    stringr::str_remove("_std.tif")
   
   frac <- exactextractr::exact_extract(
     x = raster,
     y = geometry,
     fun = "frac",
-    progress = TRUE
-  )
-  
-  area_ha <- sf::st_area(geometry, unit = "ha") |> 
-    as.numeric()
+    progress = TRUE,
+    append_cols = c("boundary_class", "boundary_name", "bdry_area_ha")
+  ) |> 
+    tibble::as_tibble()
   
   output <- frac |> mutate(
-    across(everything(), ~ .x * area_ha)
-  ) |> 
-    rename_with(.fn = ~stringr::str_replace(.x, "frac", "class")) |> 
-    tibble::rownames_to_column(var = "feature_id") |> 
-    pivot_longer(cols = -feature_id,
-                 names_to = "class",
-                 values_to = "area_ha")
+    across(dplyr::starts_with("frac"), ~ .x * bdry_area_ha)
+  ) |>
+    rename_with(.fn = ~stringr::str_replace(.x, "frac", "class")) 
+  
+  for (nm in paste0("class_", 0:6)) {
+    if (!nm %in% names(output)) {
+      output[[nm]] <- 0
+    }
+  }
+  
+  output <- output |>
+    mutate("pd50" = class_6,
+           "pd40" = class_6 + class_5,
+           "pd30" = class_6 + class_5 + class_4) |>
+  pivot_longer(cols = c(pd50, pd40, pd30),
+               names_to = "depth_class",
+               values_to = "area_ha") |>
+    mutate(extent_source = extent_name) |>
+    select(boundary_class, boundary_name, extent_source, depth_class, area_ha,
+           bdry_area_ha)
   
   
   output
