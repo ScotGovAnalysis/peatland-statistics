@@ -24,25 +24,6 @@ Development adheres to the [Code of Practice for Statistics](https://code.statis
 -   `quality/` – unit tests and validation scripts
 -   `config/` – configuration files
 
-This project generally follows a functional programming paradigm.
-
-------------------------------------------------------------------------
-
-## Reproducibility
-
-This project uses the [renv](https://rstudio.github.io/renv/index.html) package to manage package versions.
-
-To recreate the R environment, run:
-
-```         
-renv::restore()
-```
-
-If you add or update a package, you should run:
-
-```         
-renv::snapshot()
-```
 ------------------------------------------------------------------------
 
 ## Running the analysis
@@ -60,20 +41,28 @@ The main pipeline definition is contained in the `_targets.R` script.
 targets::tar_make()
 ```
 
+It can be helpful to show a visual overview of the pipeline, to do this, enter:
+
+```r
+targets::tar_visnetwork()
+```
+
+To access the values associated with a target, enter:
+
+```r
+targets::tar_read(name)
+```
+
 There is a moderate learning curve, so reading the
 [targets user manual](https://books.ropensci.org/targets/) is recommended.
-
-This project uses [renv](https://rstudio.github.io/renv/) to manage package dependencies. The `targets` and `renv` packages work well together to support reproducible analyses.
 
 When writing functions and target commands, package namespaces should generally be used explicitly, for example:
 
 ```r
 purrr::map()
 readr::read_csv()
-dplyr::mutate()
+terra::rast()
 ```
-
-This makes package dependencies explicit and improves compatibility with both targets and renv.
 
 ------------------------------------------------------------------------
 
