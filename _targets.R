@@ -29,14 +29,17 @@ tar_option_set(
     "httr2",
     "fs",
   ),
-  
-  if(global_config$crew$use_crew){
+
+)
+
+if (isTRUE(global_config$crew$use_crew)) {
+  tar_option_set(
     controller = crew::crew_controller_local(
       workers = global_config$crew$workers,
       seconds_idle = global_config$crew$seconds_idle
     )
-  }
-)
+  )
+}
 
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
