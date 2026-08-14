@@ -17,7 +17,7 @@ Dates follow YYYY-MM-DD format.
 - use of renv due compatability issues between devices on SCOTS network and external devices
 
 ### Changed
-- config updated for use of crew
+- config and _targets.R updated to allow optional (not mandatory) use of crew for parallel processing in the pipeline
 
 ### Added
 - functions to produce peat soil agreement map and derive disaggregated non-spatial datasets for peat extent
