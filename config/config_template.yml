@@ -1,4 +1,5 @@
 crew:
+  use_crew: TRUE
   workers: 8
   seconds_idle: 300
 

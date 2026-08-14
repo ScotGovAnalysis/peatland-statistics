@@ -11,6 +11,17 @@ may change at any time, and the project is not considered stable.
 
 Dates follow YYYY-MM-DD format.
 
+## 0.1.5 2026-08-14
+
+### Removed
+- use of renv due compatability issues between devices on SCOTS network and external devices
+
+### Changed
+- config updated for use of crew
+
+### Added
+- functions to produce peat soil agreement map and derive disaggregated non-spatial datasets for peat extent
+
 ## 0.1.4 2026-08-10
 
 ### Added

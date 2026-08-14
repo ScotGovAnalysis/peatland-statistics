@@ -23,13 +23,20 @@ tar_option_set(
     "purrr",
     "tibble",
     "dplyr",
-    "tidyr"
+    "tidyr",
+    "terra",
+    "sf",
+    "exactextractr",
+    "httr2",
+    "fs",
   ),
   
-  controller = crew::crew_controller_local(
-    workers = global_config$crew$workers,
-    seconds_idle = global_config$crew$seconds_idle
-  )
+  if(global_config$crew$use_crew){
+    controller = crew::crew_controller_local(
+      workers = global_config$crew$workers,
+      seconds_idle = global_config$crew$seconds_idle
+    )
+  }
 )
 
 # Run the R scripts in the R/ folder with your custom functions:
