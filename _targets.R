@@ -5,7 +5,6 @@
 
 # Load packages required to define the pipeline:
 library(targets)
-library(crew)
 library(tarchetypes)
 
 # Load other packages as needed.
