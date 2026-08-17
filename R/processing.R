@@ -441,3 +441,36 @@ process_las_bdry <- function(source_path){
   
   output_path
 }
+
+#' Process Land Cover of Scotland 1988 dataset
+#'
+#' Extracts the lLCS88 dataset from a ZIP archive,
+#' reads the boundary geometries, and writes the
+#' result to a GeoPackage for use in downstream analyses.
+#'
+#' @param source_path Character vector containing the path to the downloaded
+#'   ZIP archive. The first element is assumed to be the archive containing
+#'   the compressed dataset.
+#'
+#' @return A character scalar giving the path to the processed GeoPackage
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_lcs_88_std <- function(source_path){
+  zip_file_path <- source_path[[1]]
+  
+  extract_dir <- unzip_to_temp(zip_file_path)
+  
+  v <- terra::vect(
+    fs::path(extract_dir, "SG_LandCoverScotland_1988.shp")
+  )
+  
+  output_path <- fs::path("data", "processed", "lcs_88_std.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+  
+  output_path
+} 

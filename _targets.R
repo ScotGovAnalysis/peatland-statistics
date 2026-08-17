@@ -94,6 +94,12 @@ list(
     readr::read_csv(public_data_catalogue_file) |>
       tibble::as_tibble()
   ),
+  
+  tar_target(
+    lcs_88_condition_lookup_file,
+    fs::path("config", "lcs_88_condition_lookup.csv"),
+    format = "file"
+  ),
 
   download_targets,
   verify_targets,
