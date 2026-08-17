@@ -155,9 +155,18 @@ list(
   ),
   
   tar_target(
-    unclipped_basemap_1990,
-    create_basemap(lcs_88_std, lca_std, lcs_88_condition_lookup)
+    lcs_88_uplands_correction,
+    create_lcs_88_uplands_correction(
+      lcs_88_std,
+      lca_std
+    ),
+    format = "file"
   )
+  
+  # tar_target(
+  #   unclipped_basemap_1990,
+  #   create_basemap(lcs_88_std, lca_std, lcs_88_condition_lookup)
+  # )
   
   
 )

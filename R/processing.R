@@ -464,6 +464,8 @@ process_lcs_88_std <- function(source_path){
     fs::path(extract_dir, "SG_LandCoverScotland_1988.shp")
   )
   
+  terra::crs(v) <- "EPSG:27700"
+  
   output_path <- fs::path("data", "processed", "lcs_88_std.gpkg")
   
   terra::writeVector(
@@ -497,7 +499,9 @@ process_lca_std <- function(source_path){
     fs::path(extract_dir, "LCA_250K.shp")
   )
   
-  output_path <- fs::path("data", "processed", "lcastd.gpkg")
+  terra::crs(v) <- "EPSG:27700"
+  
+  output_path <- fs::path("data", "processed", "lca_std.gpkg")
   
   terra::writeVector(
     v,
