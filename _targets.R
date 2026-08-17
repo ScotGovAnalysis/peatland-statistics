@@ -152,6 +152,12 @@ list(
   tar_target(
     extent_analysis_combined,
     dplyr::bind_rows(extent_analysis)
+  ),
+  
+  tar_target(
+    unclipped_basemap_1990,
+    create_basemap(lcs_88_std, lca_std, lcs_88_condition_lookup)
   )
+  
   
 )

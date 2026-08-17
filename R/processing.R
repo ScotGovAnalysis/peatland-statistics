@@ -475,6 +475,39 @@ process_lcs_88_std <- function(source_path){
   output_path
 } 
 
+#' Process Land Capability for Agriculture, 1:250K dataset
+#'
+#' Extracts the LCA dataset from a ZIP archive,
+#' reads the boundary geometries, and writes the
+#' result to a GeoPackage for use in downstream analyses.
+#'
+#' @param source_path Character vector containing the path to the downloaded
+#'   ZIP archive. The first element is assumed to be the archive containing
+#'   the compressed dataset.
+#'
+#' @return A character scalar giving the path to the processed GeoPackage
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_lca_std <- function(source_path){
+  zip_file_path <- source_path[[1]]
+  
+  extract_dir <- unzip_to_temp(zip_file_path)
+  
+  v <- terra::vect(
+    fs::path(extract_dir, "LCA_250K.shp")
+  )
+  
+  output_path <- fs::path("data", "processed", "lcastd.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+  
+  output_path
+} 
+
 #' Create and save an unclipped boundary polygon
 #'
 #' Converts an extent specification stored in a list to a rectangular
