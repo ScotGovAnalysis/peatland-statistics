@@ -5,6 +5,12 @@
 # Many targets use static branching: 
 # https://books.ropensci.org/targets/static.html
 
+# Ensure directories exist for data
+
+fs::path("data", "raw") |> fs::dir_create()
+fs::path("data", "processed") |> fs::dir_create()
+fs::path("data", "outputs") |> fs::dir_create()
+
 # Download and verify ---
 
 input_target_values <-
