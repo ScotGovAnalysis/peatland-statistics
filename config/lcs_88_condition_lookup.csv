@@ -1,0 +1,106 @@
+﻿DOMTEXT,Condition
+Airfield,Settlement
+Arable: no rock farms no trees,Cropland
+Arable: no rock no farms no trees,Cropland
+Arable: no rock no farms trees,Cropland
+Arable: rock no farms no trees,Cropland
+Bings,Grassland
+Blanket bog/peatland veg.: dubh lochans,Near Natural Bog
+Blanket bog/peatland veg.: erosion no trees,Eroded
+Blanket bog/peatland veg.: erosion trees,Eroded
+Blanket bog/peatland veg.: industrial peat workings,Industrial Extraction
+Blanket bog/peatland veg.: no erosion no trees,Near Natural Bog
+Blanket bog/peatland veg.: no erosion trees,Near Natural Bog
+Blanket bog/peatland veg.: other peat workings,Domestic Extraction
+Built-up (area),Settlement
+Cararvan parks,Settlement
+Cemetries,Settlement
+Cliffs (area),Mapping offset
+Cloud cover,Other
+Coniferous (plantation - area),Forest
+Coniferous (semi-natural - area),Forest
+Dry heather moor: no rock burning no trees,Modified Bog
+Dry heather moor: no rock burning trees,Modified Bog
+Dry heather moor: no rock no burning no trees,Modified Bog
+Dry heather moor: no rock no burning trees,Modified Bog
+Dry heather moor: rock burning no trees,Modified Bog
+Dry heather moor: rock burning trees,Modified Bog
+Dry heather moor: rock no burning no trees,Modified Bog
+Dry heather moor: rock no burning trees,Modified Bog
+Dune lands: bare dunes,Mapping offset
+Dune lands: links area - grass,Mapping offset
+Dune lands: links area - heath,Mapping offset
+Dune lands: unstabilized dunes,Mapping offset
+Estuary,Mapping offset
+Factory,Settlement
+Forestry `ripping,Forest
+Golf course,Settlement
+Imp. pasture: no rock farms no trees,Intensive Grassland
+Imp. pasture: no rock farms trees,Intensive Grassland
+Imp. pasture: no rock no farms no trees,Intensive Grassland
+Imp. pasture: no rock no farms trees,Intensive Grassland
+Imp. pasture: rock farms no trees,Intensive Grassland
+Imp. pasture: rock farms trees,Intensive Grassland
+Imp. pasture: rock no farms no trees,Intensive Grassland
+Imp. pasture: rock no farms trees,Intensive Grassland
+Isolated farm: no trees,Extensive Grassland
+Maritime grassland: no trees,Mapping offset
+Montane veg.: undiff. montane non-rocky,Near Natural Bog
+Montane veg.: undiff. montane rocky,Near Natural Bog
+No-photography,Other
+Open canopy (young plantation),Forest
+Quarries (area),Settlement
+Rail,Settlement
+Recent felling,Forest
+Recent ploughing,Forest
+Road,Settlement
+Ski tows,Eroded
+Smooth grass/low scrub: no rock no trees,Extensive Grassland
+Smooth grass/low scrub: no rock trees,Extensive Grassland
+Smooth grass/low scrub: rock no trees,Extensive Grassland
+Smooth grass/low scrub: rock trees,Extensive Grassland
+Smooth grass/rushes: no rock no trees,Extensive Grassland
+Smooth grass/rushes: no rock trees,Extensive Grassland
+Smooth grass/rushes: rock no trees,Extensive Grassland
+Smooth grass/rushes: rock trees,Extensive Grassland
+Snow cover,Other
+Undif. Nardus/Molinia: no rock no trees,Modified Bog
+Undif. Nardus/Molinia: no rock trees,Modified Bog
+Undif. Nardus/Molinia: rock no trees,Modified Bog
+Undif. Nardus/Molinia: rock trees,Modified Bog
+Undif. heather moor: no rock burning no trees,Modified Bog
+Undif. heather moor: no rock burning trees,Modified Bog
+Undif. heather moor: no rock no burning no trees,Modified Bog
+Undif. heather moor: no rock no burning trees,Modified Bog
+Undif. heather moor: rock burning no trees,Modified Bog
+Undif. heather moor: rock no burning no trees,Modified Bog
+Undif. heather moor: rock no burning trees,Modified Bog
+Undiff. bracken: no rock no trees,Extensive Grassland
+Undiff. bracken: no rock trees,Extensive Grassland
+Undiff. bracken: rock no trees,Extensive Grassland
+Undiff. bracken: rock trees,Extensive Grassland
+Undiff. broadleaf (area),Forest
+Undiff. low scrub,Forest
+Undiff. mixed woodland (area),Forest
+Undiff. salt marsh: no trees,Salt marsh
+Undiff. smooth grass.: no rock no trees,Extensive Grassland
+Undiff. smooth grass.: no rock trees,Extensive Grassland
+Undiff. smooth grass.: rock no trees,Extensive Grassland
+Undiff. smooth grass.: rock trees,Extensive Grassland
+Water (area),Mapping offset
+Wet heather moor: no rock burning no trees,Modified Bog
+Wet heather moor: no rock burning trees,Modified Bog
+Wet heather moor: no rock no burning no trees,Modified Bog
+Wet heather moor: no rock no burning trees,Modified Bog
+Wet heather moor: rock no burning no trees,Modified Bog
+Wet heather moor: rock no burning trees,Modified Bog
+Wetlands: drains no trees,Modified Bog
+Wetlands: drains trees,Modified Bog
+Wetlands: no drains no trees,Near Natural Bog
+Wetlands: no drains trees,Near Natural Bog
+Rhododendron,Forest
+Arable: rock no farms trees,Arable
+Wet heather moor: rock burning no trees,Modified Bog
+Undif. heather moor: rock burning trees,Modified Bog
+Caravan sites,Settlement
+NA,Other

@@ -95,11 +95,16 @@ list(
       tibble::as_tibble()
   ),
   
-  # tar_target(
-  #   lcs_88_condition_lookup_file,
-  #   fs::path("config", "lcs_88_condition_lookup.csv"),
-  #   format = "file"
-  # ),
+  tar_target(
+    lcs_88_condition_lookup_file,
+    fs::path("config", "lcs_88_condition_lookup.csv"),
+    format = "file"
+  ),
+  
+  tar_target(
+    lcs_88_condition_lookup,
+    readr::read_csv(lcs_88_condition_lookup_file)
+  ),
 
   download_targets,
   verify_targets,
