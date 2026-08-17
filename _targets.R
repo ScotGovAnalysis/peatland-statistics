@@ -27,12 +27,12 @@ tar_option_set(
     "sf",
     "exactextractr",
     "httr2",
-    "fs",
+    "fs"
   ),
 
 )
 
-if (isTRUE(global_config$crew$use_crew)) {
+if (global_config$crew$use_crew) {
   tar_option_set(
     controller = crew::crew_controller_local(
       workers = global_config$crew$workers,
@@ -94,24 +94,24 @@ list(
     readr::read_csv(public_data_catalogue_file) |>
       tibble::as_tibble()
   ),
-  
+
   download_targets,
   verify_targets,
   
   # Processing ----
   
   processed_targets,
-  
+
   tar_target_raw(
     name = "extent_targets",
     command = extent_targets_expr
   ),
-  
+
   tar_target_raw(
     name = "boundary_targets",
     command = boundary_targets_expr
   ),
-  
+
   tar_target(
     extent_boundary_combinations,
     tidyr::crossing(
@@ -119,11 +119,11 @@ list(
       boundary_path = boundary_targets
     )
   ),
-  
+
   # Analysis ----
-  
+
   agreement_target,
-  
+
   tar_target(
     extent_analysis,
     summarise_extent(
@@ -132,7 +132,7 @@ list(
     ),
     pattern = map(extent_boundary_combinations)
   ),
-  
+
   tar_target(
     extent_analysis_combined,
     dplyr::bind_rows(extent_analysis)

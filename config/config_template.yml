@@ -39,6 +39,9 @@ processed_datasets:
   las_bdry:
     source_dataset: las
     type: boundary
+  land_area_bdry:
+    source_dataset: int_dzs
+    type: boundary
  
 agreement_analysis:
   input_datasets:

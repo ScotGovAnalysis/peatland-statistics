@@ -180,7 +180,7 @@ discretise_peat_depth <- function(x) {
 #'
 #' Extracts the source raster from a ZIP archive, standardises it to a
 #' common spatial extent and resolution, categorises peat depth values
-#' using [discretise_peat_depth()], and writes the result to a GeoTIFF.
+#' using [discretise_peat_depth()] and writes the result to a GeoTIFF.
 #'
 #' Original resolution: 100 m.
 #'
@@ -199,7 +199,7 @@ discretise_peat_depth <- function(x) {
 #'
 #' @return A character scalar giving the path to the processed raster file.
 #'   Intended for use with `targets` file targets (`format = "file"`).
-process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution) {
+process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution){
   
   extract_dir <- unzip_to_temp(source_path)
   
@@ -231,7 +231,7 @@ process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution) {
 #' Reads the source raster, converts peat soil presence values to a nominal
 #' peat depth of 50 cm and all other values to 0 cm, standardises the raster
 #' to a common spatial extent and resolution, categorises values using
-#' [discretise_peat_depth()], and writes the result to a GeoTIFF.
+#' [discretise_peat_depth()] and writes the result to a GeoTIFF.
 #'
 #' Original resolution: 50 m.
 #'
@@ -254,7 +254,8 @@ process_gagkas_24_psum_std <- function(source_path, extent_list, resolution) {
   
   r <- terra::rast(source_path) 
     
-  r <- terra::ifel(r == 1, 50, 0)
+  r <- terra::ifel(is.na(r), 0,
+                   terra::ifel(r == 1, 50, 0))
   
   r <- r |> 
     standardise_ext(extent_list) |> 
@@ -349,6 +350,48 @@ process_int_dzs_bdry <- function(source_path){
   
   
   output_path <- fs::path("data", "processed", "int_dzs.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+  
+  output_path
+}
+
+#' Process Scotland land area boundary
+#'
+#' Extracts the Intermediate Zone 2022 boundary dataset, dissolves all
+#' boundaries into a single land area polygon, attaches standard boundary
+#' metadata, and writes the result to a GeoPackage.
+#' 
+#' The 'land area' is described here: https://www.spatialdata.gov.scot/geonetwork/srv/eng/catalog.search#/metadata/2978ed67-dade-42ec-b8e1-644e0b1f8cd8
+#' This is the area to mean high water, excluding inland water bodies greater than 1 square kilometre in area.
+#'
+#' @param source_path Character vector or list containing the path to the
+#' downloaded boundary ZIP file in the first element.
+#'
+#' @return Character scalar giving the path to the output GeoPackage.
+#'
+process_land_area_bdry <- function(source_path){
+  
+  zip_file_path <- source_path[[1]]
+  
+  extract_dir <- unzip_to_temp(zip_file_path)
+  
+  v <- terra::vect(
+    fs::path(extract_dir, "SG_IntermediateZoneBdry_2022_MHW.shp")
+  )
+  
+  v <- terra::aggregate(v)
+  
+  v$boundary_class <- "land area - MHW"
+  v$boundary_name <- "land area - MHW"
+  
+  v <- v[, c("boundary_class", "boundary_name")]
+  
+  output_path <- fs::path("data", "processed", "land_area.gpkg")
   
   terra::writeVector(
     v,
