@@ -474,3 +474,36 @@ process_lcs_88_std <- function(source_path){
   
   output_path
 } 
+
+#' Create and save an unclipped boundary polygon
+#'
+#' Converts an extent specification stored in a list to a rectangular
+#' boundary polygon and writes it to a GeoPackage file in the processed
+#' data directory.
+#'
+#' @param extent_list A list containing the extent coordinates `xmin`,
+#'   `xmax`, `ymin`, and `ymax`.
+#'
+#' @return A character string giving the path to the written GeoPackage
+#'   file.
+#'
+process_unclipped_bdry <- function(extent_list = common_extent){
+  
+  
+  v <- extent_from_list(extent_list) |> 
+    terra::vect(crs = "EPSG:27700")
+  
+  v$boundary_class = "unclipped"
+  v$boundary_name = "unclipped"
+  
+  output_path <- fs::path("data", "processed", "unclipped_boundary.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+  
+  output_path
+  
+}

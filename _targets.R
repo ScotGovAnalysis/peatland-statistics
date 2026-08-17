@@ -95,11 +95,11 @@ list(
       tibble::as_tibble()
   ),
   
-  tar_target(
-    lcs_88_condition_lookup_file,
-    fs::path("config", "lcs_88_condition_lookup.csv"),
-    format = "file"
-  ),
+  # tar_target(
+  #   lcs_88_condition_lookup_file,
+  #   fs::path("config", "lcs_88_condition_lookup.csv"),
+  #   format = "file"
+  # ),
 
   download_targets,
   verify_targets,
@@ -107,6 +107,11 @@ list(
   # Processing ----
   
   processed_targets,
+  
+  tar_target(
+    unclipped_bdry,
+    process_unclipped_bdry(common_extent)
+  ),
 
   tar_target_raw(
     name = "extent_targets",

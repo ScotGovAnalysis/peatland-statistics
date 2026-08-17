@@ -154,6 +154,7 @@ boundary_targets_expr <- tibble::enframe(
   tidyr::unnest_wider(metadata) |>
   dplyr::filter(type == "boundary") |>
   dplyr::pull(processed_dataset_name) |>
+  c("unclipped_bdry") |> 
   lapply(as.name) |>
   (\(x) as.call(c(as.name("c"), x)))()
 
