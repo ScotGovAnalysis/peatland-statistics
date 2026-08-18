@@ -444,18 +444,26 @@ process_las_bdry <- function(source_path){
 
 #' Process Land Cover of Scotland 1988 dataset
 #'
-#' Extracts the lLCS88 dataset from a ZIP archive,
-#' reads the boundary geometries, and writes the
-#' result to a GeoPackage for use in downstream analyses.
+#' Extracts the Land Cover of Scotland 1988 (LCS88) dataset from a ZIP
+#' archive, reads the source vector layer, assigns the British National
+#' Grid coordinate reference system, and rasterises land cover classes
+#' onto a template raster defined by the supplied extent and resolution.
+#'
+#' The resulting raster is written to a GeoTIFF for use in downstream
+#' analyses.
 #'
 #' @param source_path Character vector containing the path to the downloaded
 #'   ZIP archive. The first element is assumed to be the archive containing
 #'   the compressed dataset.
+#' @param extent_list Named list defining the spatial extent of the output
+#'   raster.
+#' @param resolution Numeric. Output raster resolution in map units
+#'   (metres).
 #'
-#' @return A character scalar giving the path to the processed GeoPackage
+#' @return A character scalar giving the path to the processed GeoTIFF
 #'   file. Intended for use with `targets` file targets (`format = "file"`).
 #'
-process_lcs_88_std <- function(source_path){
+process_lcs_88_std <- function(source_path, extent_list, resolution){
   zip_file_path <- source_path[[1]]
   
   extract_dir <- unzip_to_temp(zip_file_path)
@@ -466,31 +474,47 @@ process_lcs_88_std <- function(source_path){
   
   terra::crs(v) <- "EPSG:27700"
   
-  output_path <- fs::path("data", "processed", "lcs_88_std.gpkg")
+  r_template <-terra::rast(x = extent_from_list(extent_list),
+                           resolution = resolution)
   
-  terra::writeVector(
-    v,
+  output <- terra::rasterize(v, r_template, field = "DOMTEXT")
+  
+  output_path <- fs::path("data", "processed", "lcs_88_std.tif")
+  
+  terra::writeRaster(
+    output,
     filename = output_path,
-    overwrite = TRUE
+    overwrite = TRUE,
+    gdal = c(
+      "COMPRESS=None",
+      "TILED=YES"
+    )
   )
   
   output_path
 } 
-
-#' Process Land Capability for Agriculture, 1:250K dataset
+#' Process Land Capability for Agriculture (LCA) 1:250k dataset
 #'
-#' Extracts the LCA dataset from a ZIP archive,
-#' reads the boundary geometries, and writes the
-#' result to a GeoPackage for use in downstream analyses.
+#' Extracts the LCA dataset from a ZIP
+#' archive, reads the source vector layer, assigns the British National
+#' Grid coordinate reference system, and rasterises broad capability categories
+#' onto a template raster defined by the supplied extent and resolution.
+#'
+#' The resulting raster is written to a GeoTIFF for use in downstream
+#' analyses.
 #'
 #' @param source_path Character vector containing the path to the downloaded
-#'   ZIP archive. The first element is assumed to be the archive containing
-#'   the compressed dataset.
+#' ZIP archive. The first element is assumed to be the archive containing
+#' the compressed dataset.
+#' @param extent_list Named list defining the spatial extent of the output
+#' raster.
+#' @param resolution Numeric. Output raster resolution in map units
+#' (metres).
 #'
-#' @return A character scalar giving the path to the processed GeoPackage
-#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#' @return A character scalar giving the path to the processed GeoTIFF
+#' file. Intended for use with `targets` file targets (`format = "file"`).
 #'
-process_lca_std <- function(source_path){
+process_lca_std <- function(source_path, extent_list, resolution){
   zip_file_path <- source_path[[1]]
   
   extract_dir <- unzip_to_temp(zip_file_path)
@@ -501,15 +525,25 @@ process_lca_std <- function(source_path){
   
   terra::crs(v) <- "EPSG:27700"
   
-  output_path <- fs::path("data", "processed", "lca_std.gpkg")
+  r_template <-terra::rast(x = extent_from_list(extent_list),
+                           resolution = resolution)
   
-  terra::writeVector(
-    v,
+  output <- terra::rasterize(v, r_template, field = "SqMid")
+  
+  output_path <- fs::path("data", "processed", "lca_std.tif")
+  
+  terra::writeRaster(
+    output,
     filename = output_path,
-    overwrite = TRUE
+    overwrite = TRUE,
+    gdal = c(
+      "COMPRESS=None",
+      "TILED=YES"
+    )
   )
   
   output_path
+  
 } 
 
 #' Create and save an unclipped boundary polygon

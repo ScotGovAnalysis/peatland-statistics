@@ -4,46 +4,49 @@
 # 
 # Spatial datasets have file targets.
 
-#' Create LCS88 uplands correction layer
-#'
-#' Reads the standardised LCS88 land cover and Landscape Character
-#' Assessment (LCA) datasets, identifies LCS88 polygons that intersect
-#' LCA polygons classified as "Uplands", and adds a logical `uplands`
-#' field indicating whether each LCS88 polygon overlaps an upland area.
-#'
-#' The resulting dataset retains all LCS88 polygons and is written to a
-#' GeoPackage in the processed data directory.
-#'
-#' @param lcs_88_std Character. Path to the standardised LCS88 spatial
-#' dataset.
-#' @param lca_std Character. Path to the standardised LCA spatial dataset.
-#'
-#' @return Character. Path to the output GeoPackage containing the LCS88
-#' layer with the additional `uplands` indicator field.
-create_lcs_88_uplands_correction <- function(lcs_88_std, lca_std){
+create_unclipped_basemap <- function(lcs_88_std,
+                                     lca_std,
+                                     lcs_88_condition_lookup){
   
-  lcs_88 <- terra::vect(lcs_88_std)
-  lca <- terra::vect(lca_std)
+  lcs_88 <- terra::rast(lcs_88_std)
   
-  lca <- lca[lca$SqMid == "Uplands", ]
+  lookup <- lcs_88_condition_lookup
   
-  hits <- terra::relate(lcs_88, lca, relation = "intersects")
-  
-  lcs_88$uplands <- lengths(hits) > 0
-  
-  output_path <- fs::path(
-    "data",
-    "processed",
-    "lcs_88_uplands_correction.gpkg"
+  labels <- terra::levels(lcs_88)[[1]]
+
+  labels <- dplyr::full_join(
+    labels,
+    lookup,
+    by = "DOMTEXT"
+  ) |> 
+    dplyr::arrange(Condition) |> 
+    dplyr::group_by(Condition) |>
+    dplyr::mutate(
+      condition_value = dplyr::cur_group_id()
+    ) |>
+    dplyr::ungroup()
+
+  lcs_88 <- terra::classify(
+    lcs_88,
+    labels |> dplyr::select(value, condition_value)
   )
   
-  terra::writeVector(
+  levels(lcs_88) <- labels |> dplyr::select(condition_value, Condition) |> 
+    dplyr::distinct()
+  
+  output_path <- fs::path("data", "processed", "basemap_unclipped.tif")
+  
+  terra::writeRaster(
     lcs_88,
     filename = output_path,
-    filetype = "GPKG",
-    overwrite = TRUE
+    overwrite = TRUE,
+    gdal = c(
+      "COMPRESS=None",
+      "TILED=YES"
+    )
   )
   
   output_path
 }
+
   

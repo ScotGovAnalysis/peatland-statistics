@@ -93,12 +93,14 @@ processed_targets <- purrr::pmap(
              ),
              format = "file"
            ),
-           # boundary
+           # condition
            condition = tar_target_raw(
              name = processed_dataset_name,
              command = substitute(
                PROCESSOR(
-                 source_path = SOURCE
+                 source_path = SOURCE,
+                 extent_list = common_extent,
+                 resolution = common_resolution
                ),
              ),
              format = "file"

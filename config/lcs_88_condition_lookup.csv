@@ -1,10 +1,10 @@
-﻿DOMTEXT,Condition
+DOMTEXT,Condition
 Airfield,Settlement
 Arable: no rock farms no trees,Cropland
 Arable: no rock no farms no trees,Cropland
 Arable: no rock no farms trees,Cropland
 Arable: rock no farms no trees,Cropland
-Bings,Grassland
+Bings (area),Grassland
 Blanket bog/peatland veg.: dubh lochans,Near Natural Bog
 Blanket bog/peatland veg.: erosion no trees,Eroded
 Blanket bog/peatland veg.: erosion trees,Eroded
