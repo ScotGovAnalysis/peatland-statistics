@@ -4,7 +4,7 @@ Arable: no rock farms no trees,Cropland
 Arable: no rock no farms no trees,Cropland
 Arable: no rock no farms trees,Cropland
 Arable: rock no farms no trees,Cropland
-Bings (area),Grassland
+Bings (area),Extensive Grassland
 Blanket bog/peatland veg.: dubh lochans,Near Natural Bog
 Blanket bog/peatland veg.: erosion no trees,Eroded
 Blanket bog/peatland veg.: erosion trees,Eroded
@@ -99,7 +99,7 @@ Wetlands: drains trees,Modified Bog
 Wetlands: no drains no trees,Near Natural Bog
 Wetlands: no drains trees,Near Natural Bog
 Rhododendron,Forest
-Arable: rock no farms trees,Arable
+Arable: rock no farms trees,Cropland
 Wet heather moor: rock burning no trees,Modified Bog
 Undif. heather moor: rock burning trees,Modified Bog
 Caravan sites,Settlement
