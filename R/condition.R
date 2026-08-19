@@ -46,11 +46,22 @@ create_unclipped_basemap <- function(lcs_88_std,
   )
   
   # uplands correction
-
-  uplands_correction_indices <- lcs_88$DOMTEXT == 4 & # ! Note hard-coded value!
+  
+  extensive_grassland_value <- labels |>
+    dplyr::filter(Condition == "Extensive Grassland") |>
+    dplyr::pull(condition_value) |> 
+    dplyr::first()
+  
+  uplands_correction_value <- labels |>
+    dplyr::filter(Condition == "LCA Uplands Correction") |>
+    dplyr::pull(condition_value) |> 
+    dplyr::first()
+  
+  uplands_correction_indices <-
+    lcs_88$DOMTEXT == extensive_grassland_value &
     lca$SqMid == "Uplands"
-
-  lcs_88[uplands_correction_indices] <- 8 # !Note hard-coded value!
+  
+  lcs_88[uplands_correction_indices] <- uplands_correction_value
   
   # update levels
   
