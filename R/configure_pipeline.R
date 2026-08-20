@@ -78,7 +78,8 @@ processed_targets <- purrr::pmap(
                PROCESSOR(
                  source_path = SOURCE,
                  extent_list = common_extent,
-                 resolution = common_resolution
+                 resolution = common_resolution,
+                 land_area_path = land_area_bdry
                ),
              ),
              format = "file"
@@ -127,8 +128,7 @@ agreement_target <- tar_target_raw(
   command = bquote(
     create_agreement_map(
       input_paths = .(agreement_input_expr),
-      peat_class = agreement_analysis_peat_class,
-      boundary_path = int_dzs_bdry
+      peat_class = agreement_analysis_peat_class
     )
   ),
   format = "file"
@@ -156,7 +156,6 @@ boundary_targets_expr <- tibble::enframe(
   tidyr::unnest_wider(metadata) |>
   dplyr::filter(type == "boundary") |>
   dplyr::pull(processed_dataset_name) |>
-  c("unclipped_bdry") |> 
   lapply(as.name) |>
   (\(x) as.call(c(as.name("c"), x)))()
 
