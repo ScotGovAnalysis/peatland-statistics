@@ -158,6 +158,21 @@ list(
     unclipped_basemap_1990,
     create_unclipped_basemap(lcs_88_std, lca_std, lcs_88_condition_lookup),
     format = "file"
+  ),
+  
+  tar_target(
+    condition_analysis,
+    summarise_condition(
+      extent_path = extent_boundary_combinations$extent_path,
+      boundary_path = extent_boundary_combinations$boundary_path,
+      condition_path = unclipped_basemap_1990
+    ),
+    pattern = map(extent_boundary_combinations)
+  ),
+  
+  tar_target(
+    condition_analysis_combined,
+    dplyr::bind_rows(condition_analysis)
   )
   
   
