@@ -20,14 +20,11 @@
 #'
 create_agreement_map <- function(
     input_paths,
-    peat_class = 6,
-    boundary_path
+    peat_class = 6
 ) {
   
   
   s <- terra::rast(input_paths)
-
-  message("Creating agreement raster")
   
   agree <- terra::app(
     s == peat_class,
@@ -39,29 +36,10 @@ create_agreement_map <- function(
     fs::path("data", "outputs")
   )
   
-  boundary <- terra::vect(boundary_path)
-  
-  agree <- terra::mask(agree, boundary)
-  
-  message("Converting to vector")
-  agree_vect <- terra::as.polygons(
-    agree,
-    dissolve = TRUE,
-    na.rm = TRUE
-  )
-  
-  message("Saving outputs")
-  
   raster_output_path <- fs::path(
     "data",
     "outputs",
     "peat_soil_agreement_map.tif"
-  )
-  
-  vector_output_path <- fs::path(
-    "data",
-    "outputs",
-    "peat_soil_agreement_map.gpkg"
   )
   
   terra::writeRaster(
@@ -76,13 +54,7 @@ create_agreement_map <- function(
     )
   )
   
-  terra::writeVector(
-    agree_vect,
-    filename = vector_output_path,
-    overwrite = TRUE
-  )
-  
-  c(raster_output_path, vector_output_path)
+  raster_output_path
   
 }
 
