@@ -557,7 +557,8 @@ process_ghgi_condition_std <- function(source_path, extent_list, resolution){
   terra::crs(v) <- "EPSG:27700"
   
   r_template <-terra::rast(x = extent_from_list(extent_list),
-                           resolution = resolution)
+                           resolution = resolution,
+                           crs = "EPSG:27700")
   
   output <- terra::rasterize(v, r_template, field = "Condition")
   
@@ -609,9 +610,11 @@ process_ghgi_extent_std <- function(source_path, extent_list, resolution,
   terra::crs(v) <- "EPSG:27700"
   
   r_template <-terra::rast(x = extent_from_list(extent_list),
-                           resolution = resolution)
+                           resolution = resolution,
+                           crs = "EPSG:27700")
   
-  output <- terra::rasterize(v, r_template, field = 6, background = 0) |> 
+  output <- terra::rasterize(v, r_template, field = 50, background = 0) |> 
+    discretise_peat_depth() |> 
     apply_land_area_mask(land_area_path)
   
   output_path <- fs::path("data", "processed", "ghgi_extent_std.tif")
