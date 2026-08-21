@@ -137,7 +137,7 @@ list(
 
   tar_target(
     extent_analysis,
-    summarise_extent(
+    summarise_extent_inexact(
       extent_path = extent_boundary_combinations$extent_path,
       boundary_path = extent_boundary_combinations$boundary_path
     ),
