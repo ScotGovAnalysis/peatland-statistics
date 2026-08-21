@@ -531,3 +531,100 @@ process_lca_std <- function(source_path, extent_list, resolution){
   output_path
   
 } 
+
+#' Process GHGI condition dataset
+#'
+#' Reads the source vector dataset, assigns the British National Grid
+#' coordinate reference system, and rasterises the `Condition` attribute
+#' onto a template raster defined by the supplied extent and resolution.
+#'
+#' The resulting raster is written to a GeoTIFF for use in downstream
+#' analyses.
+#'
+#' @param source_path Character scalar. Path to the source vector dataset.
+#' @param extent_list Named list defining the spatial extent of the output
+#'   raster.
+#' @param resolution Numeric. Output raster resolution in map units
+#'   (metres).
+#'
+#' @return A character scalar giving the path to the processed GeoTIFF
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_ghgi_condition_std <- function(source_path, extent_list, resolution){
+  
+  v <- terra::vect(source_path)
+  
+  terra::crs(v) <- "EPSG:27700"
+  
+  r_template <-terra::rast(x = extent_from_list(extent_list),
+                           resolution = resolution)
+  
+  output <- terra::rasterize(v, r_template, field = "Condition")
+  
+  output_path <- fs::path("data", "processed", "ghgi_condition_std.tif")
+  
+  terra::writeRaster(
+    output,
+    filename = output_path,
+    overwrite = TRUE,
+    gdal = c(
+      "COMPRESS=None",
+      "TILED=YES"
+    )
+  )
+  
+  output_path
+}
+
+#' Process GHGI peatland extent dataset
+#'
+#' Reads the source vector dataset, assigns the British National Grid
+#' coordinate reference system, rasterises the peatland extent geometry onto
+#' a template raster defined by the supplied extent and resolution, applies a
+#' land area mask using [apply_land_area_mask()], and writes the result to a
+#' GeoTIFF.
+#'
+#' The output raster is a binary peatland extent layer. Cells whose centres
+#' fall within the source geometry are assigned the value `6`, matching the
+#' deepest peat class used elsewhere in the project. Cells outside the source
+#' geometry are assigned `0`. Cells outside the Scotland land area boundary
+#' are assigned `NA`.
+#'
+#' @param source_path Character scalar. Path to the source vector dataset.
+#' @param extent_list Named list defining the spatial extent of the output
+#'   raster.
+#' @param resolution Numeric. Output raster resolution in map units
+#'   (metres).
+#' @param land_area_path Character scalar. Path to the land area boundary
+#'   dataset passed to [apply_land_area_mask()].
+#'
+#' @return A character scalar giving the path to the processed GeoTIFF
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_ghgi_extent_std <- function(source_path, extent_list, resolution,
+                                    land_area_path){
+  
+  v <- terra::vect(source_path)
+  
+  terra::crs(v) <- "EPSG:27700"
+  
+  r_template <-terra::rast(x = extent_from_list(extent_list),
+                           resolution = resolution)
+  
+  output <- terra::rasterize(v, r_template, field = 6, background = 0) |> 
+    apply_land_area_mask(land_area_path)
+  
+  output_path <- fs::path("data", "processed", "ghgi_extent_std.tif")
+  
+  terra::writeRaster(
+    output,
+    filename = output_path,
+    overwrite = TRUE,
+    gdal = c(
+      "COMPRESS=None",
+      "TILED=YES"
+    )
+  )
+  
+  output_path
+}
