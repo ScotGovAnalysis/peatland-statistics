@@ -346,48 +346,6 @@ process_robb_25_pd <- function(source_path, extent_list, resolution) {
   output_path
 }
 
-#' Process Intermediate Zone boundary dataset
-#'
-#' Extracts the Intermediate Zone boundary dataset from a ZIP archive,
-#' reads the boundary geometries, standardises the boundary attributes to
-#' a common schema (`boundary_class` and `boundary_name`), and writes the
-#' result to a GeoPackage for use in downstream analyses.
-#'
-#' @param source_path Character vector containing the path to the downloaded
-#'   ZIP archive. The first element is assumed to be the archive containing
-#'   the boundary dataset.
-#'
-#' @return A character scalar giving the path to the processed GeoPackage
-#'   file. Intended for use with `targets` file targets (`format = "file"`).
-#'
-process_int_dzs_bdry <- function(source_path){
-  
-  zip_file_path <- source_path[[1]]
-  
-  extract_dir <- unzip_to_temp(zip_file_path)
-  
-  v <- terra::vect(
-    fs::path(extract_dir, "SG_IntermediateZoneBdry_2022_MHW.shp")
-  )
-  
-  v$boundary_class <- "intermediate_datazone"
-  v$boundary_name <- v$IZName
-  
-  v <- v[, c("boundary_class", "boundary_name")]
-  
-  
-  
-  output_path <- fs::path("data", "processed", "int_dzs.gpkg")
-  
-  terra::writeVector(
-    v,
-    filename = output_path,
-    overwrite = TRUE
-  )
-  
-  output_path
-}
-
 #' Process Scotland land area boundary
 #'
 #' Extracts the Intermediate Zone 2022 boundary dataset, dissolves all
@@ -414,8 +372,8 @@ process_land_area_bdry <- function(source_path){
   
   v <- terra::aggregate(v)
   
-  v$boundary_class <- "land area - MHW"
-  v$boundary_name <- "land area - MHW"
+  v$boundary_class <- "land area"
+  v$boundary_name <- "land area"
   
   v <- v[, c("boundary_class", "boundary_name")]
   
@@ -454,7 +412,7 @@ process_las_bdry <- function(source_path){
     fs::path(extract_dir, "pub_las.shp")
   )
   
-  v$boundary_class <- "local_authority"
+  v$boundary_class <- "local authority"
   v$boundary_name <- v$local_auth
   
   v <- v[, c("boundary_class", "boundary_name")]
