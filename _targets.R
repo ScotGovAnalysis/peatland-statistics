@@ -150,17 +150,17 @@ list(
   ),
   
   tar_target(
-    unclipped_basemap_1990,
+    unclipped_basemap,
     create_unclipped_basemap(lcs_88_std, lca_std, lcs_88_condition_lookup),
     format = "file"
   ),
   
   tar_target(
     condition_analysis,
-    summarise_condition(
+    summarise_condition_inexact(
       extent_path = extent_boundary_combinations$extent_path,
       boundary_path = extent_boundary_combinations$boundary_path,
-      condition_path = unclipped_basemap_1990
+      condition_path = unclipped_basemap
     ),
     pattern = map(extent_boundary_combinations)
   ),
