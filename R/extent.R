@@ -20,14 +20,11 @@
 #'
 create_agreement_map <- function(
     input_paths,
-    peat_class = 6,
-    boundary_path
+    peat_class = 6
 ) {
   
   
   s <- terra::rast(input_paths)
-
-  message("Creating agreement raster")
   
   agree <- terra::app(
     s == peat_class,
@@ -39,29 +36,10 @@ create_agreement_map <- function(
     fs::path("data", "outputs")
   )
   
-  boundary <- terra::vect(boundary_path)
-  
-  agree <- terra::mask(agree, boundary)
-  
-  message("Converting to vector")
-  agree_vect <- terra::as.polygons(
-    agree,
-    dissolve = TRUE,
-    na.rm = TRUE
-  )
-  
-  message("Saving outputs")
-  
   raster_output_path <- fs::path(
     "data",
     "outputs",
     "peat_soil_agreement_map.tif"
-  )
-  
-  vector_output_path <- fs::path(
-    "data",
-    "outputs",
-    "peat_soil_agreement_map.gpkg"
   )
   
   terra::writeRaster(
@@ -76,13 +54,7 @@ create_agreement_map <- function(
     )
   )
   
-  terra::writeVector(
-    agree_vect,
-    filename = vector_output_path,
-    overwrite = TRUE
-  )
-  
-  c(raster_output_path, vector_output_path)
+  raster_output_path
   
 }
 
@@ -103,14 +75,15 @@ create_agreement_map <- function(
 #' boundary_class - High level boundary classification.
 #' boundary_name - Boundary name
 #' extent_source - Name of the peat extentsource.
-#' depth_class - One of `pd30`, `pd40`, or `pd50`.
+#' depth_class - One of `pd_30`, `pd_40`, or `pd_50`.
 #' area_ha - Area within the boundary, in hectares.
 #' bdry_area_ha - Total area of the boundary
 summarise_extent <- function(extent_path, boundary_path) {
   
   raster <- terra::rast(extent_path)
-  geometry <- sf::st_read(boundary_path) |>
-    mutate(bdry_area_ha = sf::st_area(geom) |> as.numeric() / 10000)
+  geometry <- sf::st_read(boundary_path)
+  
+  cell_area_ha <- prod(terra::res(raster)) / 10000
   
   extent_name <- extent_path |> stringr::str_remove("data/processed/") |>
     stringr::str_remove("_std.tif")
@@ -118,33 +91,92 @@ summarise_extent <- function(extent_path, boundary_path) {
   frac <- exactextractr::exact_extract(
     x = raster,
     y = geometry,
-    fun = "frac",
+    fun = function(df) df |> group_by(value) |> summarise(sum_frac = sum(coverage_fraction, na.rm = TRUE)),
+    summarize_df = TRUE,
     progress = TRUE,
-    append_cols = c("boundary_class", "boundary_name", "bdry_area_ha")
+    append_cols = c("boundary_class", "boundary_name")
   ) |> 
-    tibble::as_tibble()
+    tibble::as_tibble() 
   
-  output <- frac |> mutate(
-    across(dplyr::starts_with("frac"), ~ .x * bdry_area_ha)
-  ) |>
-    rename_with(.fn = ~stringr::str_replace(.x, "frac", "class")) 
-  
+   output <- frac |> 
+    mutate(area_ha = sum_frac * cell_area_ha,
+           extent_source = extent_name,
+           .keep = "unused") |>
+    filter(!is.na(value)) |> # remove non-land areas
+    group_by(boundary_class, boundary_name) |>
+    mutate(land_area_ha = sum(area_ha)) |>
+    ungroup() |>
+    pivot_wider(values_from = area_ha,
+                names_from = value,
+                names_prefix = "class_")
+
   for (nm in paste0("class_", 0:6)) {
     if (!nm %in% names(output)) {
       output[[nm]] <- 0
     }
   }
-  
+
   output <- output |>
-    mutate("pd50" = class_6,
-           "pd40" = class_6 + class_5,
-           "pd30" = class_6 + class_5 + class_4) |>
-  pivot_longer(cols = c(pd50, pd40, pd30),
+    mutate("pd_50" = class_6,
+           "pd_40" = class_6 + class_5,
+           "pd_30" = class_6 + class_5 + class_4) |>
+  pivot_longer(cols = c(pd_50, pd_40, pd_30),
                names_to = "depth_class",
                values_to = "area_ha") |>
+    mutate(extent_source = extent_name,
+           area_ha = tidyr::replace_na(area_ha, 0)) |>
+    select(boundary_class, boundary_name, extent_source, depth_class, area_ha,
+           land_area_ha)
+  
+  
+  output
+}
+
+summarise_extent_inexact <- function(extent_path, boundary_path) {
+  
+  raster <- terra::rast(extent_path)
+  geometry <-terra::vect(boundary_path)
+  
+  cell_area_ha <- prod(terra::res(raster)) / 10000
+  
+  extent_name <- extent_path |> stringr::str_remove("data/processed/") |>
+    stringr::str_remove("_std.tif")
+  
+  output <- terra::extract(raster, geometry, fun = "table", touches = FALSE, bind = TRUE) |> 
+    as.data.frame() |> 
+    pivot_longer(cols = starts_with("count"),
+                 names_to = "depth_class",
+                 values_to = "count") |> 
+    mutate(depth_class = depth_class |> stringr::str_replace("count\\.", "class_")) |> 
+    mutate(area_ha = count * cell_area_ha,
+           extent_source = extent_name,
+           .keep = "unused") |>
+    group_by(boundary_name) |> # must be unique!
+    mutate(land_area_ha = sum(area_ha)) |>
+    ungroup() |>
+    pivot_wider(values_from = area_ha,
+                names_from = depth_class,
+                values_fill = 0)
+  
+  # Ensure columns present for each class (where missing) but that NA values provided for binary maps
+  unique_depth_vals <- terra::unique(raster) |> as.vector() |> unlist()
+  unique_depth_vals <- paste0("class_", unique_depth_vals)
+  missing <- setdiff(paste0("class_", 0:6), names(output))
+  
+  for (nm in missing) {
+    output[[nm]] <- if (nm %in% unique_depth_vals) 0 else NA
+  }
+
+  output <- output |>
+    mutate("pd_50" = class_6,
+           "pd_40" = class_6 + class_5,
+           "pd_30" = class_6 + class_5 + class_4) |>
+    pivot_longer(cols = c(pd_50, pd_40, pd_30),
+                 names_to = "depth_class",
+                 values_to = "area_ha") |>
     mutate(extent_source = extent_name) |>
     select(boundary_class, boundary_name, extent_source, depth_class, area_ha,
-           bdry_area_ha)
+           land_area_ha)
   
   
   output

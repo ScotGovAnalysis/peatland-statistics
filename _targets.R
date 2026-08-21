@@ -94,6 +94,17 @@ list(
     readr::read_csv(public_data_catalogue_file) |>
       tibble::as_tibble()
   ),
+  
+  tar_target(
+    lcs_88_condition_lookup_file,
+    fs::path("config", "lcs_88_condition_lookup.csv"),
+    format = "file"
+  ),
+  
+  tar_target(
+    lcs_88_condition_lookup,
+    readr::read_csv(lcs_88_condition_lookup_file)
+  ),
 
   download_targets,
   verify_targets,
@@ -126,7 +137,7 @@ list(
 
   tar_target(
     extent_analysis,
-    summarise_extent(
+    summarise_extent_inexact(
       extent_path = extent_boundary_combinations$extent_path,
       boundary_path = extent_boundary_combinations$boundary_path
     ),
@@ -136,6 +147,28 @@ list(
   tar_target(
     extent_analysis_combined,
     dplyr::bind_rows(extent_analysis)
+  ),
+  
+  tar_target(
+    unclipped_basemap,
+    create_unclipped_basemap(lcs_88_std, lca_std, lcs_88_condition_lookup),
+    format = "file"
+  ),
+  
+  tar_target(
+    condition_analysis,
+    summarise_condition_inexact(
+      extent_path = extent_boundary_combinations$extent_path,
+      boundary_path = extent_boundary_combinations$boundary_path,
+      condition_path = unclipped_basemap
+    ),
+    pattern = map(extent_boundary_combinations)
+  ),
+  
+  tar_target(
+    condition_analysis_combined,
+    dplyr::bind_rows(condition_analysis)
   )
+  
   
 )
