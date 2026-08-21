@@ -75,7 +75,7 @@ create_agreement_map <- function(
 #' boundary_class - High level boundary classification.
 #' boundary_name - Boundary name
 #' extent_source - Name of the peat extentsource.
-#' depth_class - One of `pd30`, `pd40`, or `pd50`.
+#' depth_class - One of `pd_30`, `pd_40`, or `pd_50`.
 #' area_ha - Area within the boundary, in hectares.
 #' bdry_area_ha - Total area of the boundary
 summarise_extent <- function(extent_path, boundary_path) {
@@ -117,10 +117,10 @@ summarise_extent <- function(extent_path, boundary_path) {
   }
 
   output <- output |>
-    mutate("pd50" = class_6,
-           "pd40" = class_6 + class_5,
-           "pd30" = class_6 + class_5 + class_4) |>
-  pivot_longer(cols = c(pd50, pd40, pd30),
+    mutate("pd_50" = class_6,
+           "pd_40" = class_6 + class_5,
+           "pd_30" = class_6 + class_5 + class_4) |>
+  pivot_longer(cols = c(pd_50, pd_40, pd_30),
                names_to = "depth_class",
                values_to = "area_ha") |>
     mutate(extent_source = extent_name,
@@ -155,23 +155,26 @@ summarise_extent_inexact <- function(extent_path, boundary_path) {
     mutate(land_area_ha = sum(area_ha)) |>
     ungroup() |>
     pivot_wider(values_from = area_ha,
-                names_from = depth_class)
+                names_from = depth_class,
+                values_fill = 0)
   
-  for (nm in paste0("class_", 0:6)) {
-    if (!nm %in% names(output)) {
-      output[[nm]] <- 0
-    }
+  # Ensure columns present for each class (where missing) but that NA values provided for binary maps
+  unique_depth_vals <- terra::unique(raster) |> as.vector() |> unlist()
+  unique_depth_vals <- paste0("class_", unique_depth_vals)
+  missing <- setdiff(paste0("class_", 0:6), names(output))
+  
+  for (nm in missing) {
+    output[[nm]] <- if (nm %in% unique_depth_vals) 0 else NA
   }
 
   output <- output |>
-    mutate("pd50" = class_6,
-           "pd40" = class_6 + class_5,
-           "pd30" = class_6 + class_5 + class_4) |>
-    pivot_longer(cols = c(pd50, pd40, pd30),
+    mutate("pd_50" = class_6,
+           "pd_40" = class_6 + class_5,
+           "pd_30" = class_6 + class_5 + class_4) |>
+    pivot_longer(cols = c(pd_50, pd_40, pd_30),
                  names_to = "depth_class",
                  values_to = "area_ha") |>
-    mutate(extent_source = extent_name,
-           area_ha = tidyr::replace_na(area_ha, 0)) |>
+    mutate(extent_source = extent_name) |>
     select(boundary_class, boundary_name, extent_source, depth_class, area_ha,
            land_area_ha)
   
