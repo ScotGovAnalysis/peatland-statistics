@@ -111,19 +111,23 @@ processed_targets <- purrr::pmap(
 )
 
 rast_boundary_values <- processed_target_values |> 
-  dplyr::filter(type == "boundary")
+  dplyr::filter(type == "boundary") |> 
+  dplyr::select(-source_dataset)
 
 boundary_rast_targets <- purrr::pmap(
   rast_boundary_values,
-  function(processed_dataset_name, source_dataset, type) {
+  function(processed_dataset_name, type) {
     
-    SOURCE = as.name(paste0(source_dataset, "_bdry"))
+    SOURCE = as.name(processed_dataset_name)
     tar_target_raw(
       name = paste0(processed_dataset_name,"_rast"),
-      command = rlang::expr(rasterize_boundary(
+      command = substitute(
+        rasterize_boundary(
         source_path = SOURCE,
         extent_list = common_extent,
-        resolution = common_resolution)),
+        resolution = common_resolution),
+        list(SOURCE = SOURCE)
+        ),
     format = "file")
   }
 )
