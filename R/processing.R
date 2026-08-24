@@ -638,3 +638,30 @@ process_ghgi_extent_std <- function(source_path, extent_list, resolution,
   
   output_path
 }
+
+rasterize_boundary <- function(source_path, extent_list, resolution){
+  
+  v <- terra::vect(source_path)
+  
+  terra::crs(v) <- "EPSG:27700"
+  
+  r_template <-terra::rast(x = extent_from_list(extent_list),
+                           resolution = resolution,
+                           crs = "EPSG:27700")
+  
+  output <- terra::rasterize(v, r_template, field = "boundary_name")
+  
+  output_path <- stringr::str_replace(source_path, "\\.gpkg", "_rast.tif")
+  
+  terra::writeRaster(
+    output,
+    filename = output_path,
+    overwrite = TRUE,
+    gdal = c(
+      "COMPRESS=ZSTD",
+      "TILED=YES"
+    )
+  )
+  
+  output_path
+}

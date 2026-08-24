@@ -122,6 +122,8 @@ list(
     name = "boundary_targets",
     command = boundary_targets_expr
   ),
+  
+  boundary_rast_targets,
 
   tar_target(
     extent_boundary_combinations,
