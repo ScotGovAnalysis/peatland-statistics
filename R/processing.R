@@ -241,7 +241,7 @@ process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution,
     datatype = "INT1U",
     overwrite = TRUE,
     gdal = c(
-      "COMPRESS=None",
+      "COMPRESS=ZSTD",
       "TILED=YES"
     )
   )
@@ -298,7 +298,7 @@ process_gagkas_24_psum_std <- function(source_path, extent_list, resolution,
     datatype = "INT1U",
     overwrite = TRUE,
     gdal = c(
-      "COMPRESS=None",
+      "COMPRESS=ZSTD",
       "TILED=YES"
     )
   )
@@ -338,7 +338,7 @@ process_robb_25_pd <- function(source_path, extent_list, resolution) {
     datatype = "INT1U",
     overwrite = TRUE,
     gdal = c(
-      "COMPRESS=None",
+      "COMPRESS=ZSTD",
       "TILED=YES"
     )
   )
@@ -463,7 +463,13 @@ process_lcs_88_std <- function(source_path, extent_list, resolution){
   r_template <-terra::rast(x = extent_from_list(extent_list),
                            resolution = resolution)
   
-  output <- terra::rasterize(v, r_template, field = "DOMTEXT")
+  output <- terra::rasterize(v, r_template, field = "DOMTEXT",
+                             background = 255) # all NAs classd as mapping offset
+  
+  lev <- terra::levels(output)[[1]] |> 
+    rbind(list(255, "mapping offset"))
+  
+  levels(output) <- lev
   
   output_path <- fs::path("data", "processed", "lcs_88_std.tif")
   
@@ -471,8 +477,9 @@ process_lcs_88_std <- function(source_path, extent_list, resolution){
     output,
     filename = output_path,
     overwrite = TRUE,
+    datatype = "INT1U",
     gdal = c(
-      "COMPRESS=None",
+      "COMPRESS=LZW",
       "TILED=YES"
     )
   )
@@ -523,7 +530,7 @@ process_lca_std <- function(source_path, extent_list, resolution){
     filename = output_path,
     overwrite = TRUE,
     gdal = c(
-      "COMPRESS=None",
+      "COMPRESS=ZSTD",
       "TILED=YES"
     )
   )
@@ -569,7 +576,7 @@ process_ghgi_condition_std <- function(source_path, extent_list, resolution){
     filename = output_path,
     overwrite = TRUE,
     gdal = c(
-      "COMPRESS=None",
+      "COMPRESS=ZSTD",
       "TILED=YES"
     )
   )
@@ -624,7 +631,7 @@ process_ghgi_extent_std <- function(source_path, extent_list, resolution,
     filename = output_path,
     overwrite = TRUE,
     gdal = c(
-      "COMPRESS=None",
+      "COMPRESS=ZSTD",
       "TILED=YES"
     )
   )

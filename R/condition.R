@@ -8,6 +8,8 @@ create_unclipped_basemap <- function(lcs_88_std,
                                      lca_std,
                                      lcs_88_condition_lookup){
   
+  cli::cli_alert_info("Unclipped basemap: reading datasets - {Sys.time()}")
+  
   # datasets
   
   lcs_88 <- terra::rast(lcs_88_std)
@@ -38,6 +40,8 @@ create_unclipped_basemap <- function(lcs_88_std,
     dplyr::ungroup() 
     
 
+  cli::cli_alert_info("Unclipped basemap: classifying - {Sys.time()}")
+  
   # classify 
   
   lcs_88 <- terra::classify(
@@ -45,7 +49,9 @@ create_unclipped_basemap <- function(lcs_88_std,
     labels |> dplyr::select(value, condition_value)
   )
   
-  # uplands correction
+  cli::cli_alert_info("Unclipped basemap: get uplands correction indices - {Sys.time()}")
+  
+  # uplands correction and na to mapping offset
   
   extensive_grassland_value <- labels |>
     dplyr::filter(condition == "extensive grassland") |>
@@ -57,28 +63,31 @@ create_unclipped_basemap <- function(lcs_88_std,
     dplyr::pull(condition_value) |> 
     dplyr::first()
   
+  uplands_code <- terra::levels(lca)[[1]] |> 
+    dplyr::filter(SqMid == "Uplands") |> 
+    dplyr::pull(value) |> 
+    dplyr::first()
+  
   uplands_correction_indices <-
     lcs_88$DOMTEXT == extensive_grassland_value &
-    lca$SqMid == "Uplands"
+    lca$SqMid == uplands_code
+  
+  cli::cli_alert_info("Unclipped basemap: apply uplands correction - {Sys.time()}")
   
   lcs_88[uplands_correction_indices] <- uplands_correction_value
+
+  cli::cli_alert_info("Unclipped basemap: update levels and crs - {Sys.time()}")
   
   # update levels
   
   levels(lcs_88) <- labels |> dplyr::select(condition_value, condition) |> 
     dplyr::distinct()
   
-  # set na values in condition map to 'mapping offset'
-  mapping_offset_val <- labels |>
-    dplyr::filter(condition == "mapping offset") |>
-    dplyr::pull(condition_value) |> 
-    dplyr::first()
-  
-  lcs_88 <- terra::ifel(is.na(lcs_88), mapping_offset_val, lcs_88)
-  
   # set crs
   
   crs(lcs_88) <- "EPSG:27700"
+  
+  cli::cli_alert_info("Unclipped basemap: saving output - {Sys.time()}")
   
   # save output
   output_path <- fs::path("data", "processed", "basemap_unclipped.tif")
@@ -87,8 +96,9 @@ create_unclipped_basemap <- function(lcs_88_std,
     lcs_88,
     filename = output_path,
     overwrite = TRUE,
+    datatype = "INT1U",
     gdal = c(
-      "COMPRESS=None",
+      "COMPRESS=LZW",
       "TILED=YES"
     )
   )
@@ -187,12 +197,12 @@ summarise_condition_inexact <- function(extent_path,
                                 condition_path) {
   # datasets
   extent <- terra::rast(extent_path)
-  geometry <- sf::st_read(boundary_path)
+  geometry <- terra::vect(boundary_path)
   condition <- terra::rast(condition_path)
   cell_area_ha <- prod(terra::res(extent)) / 10000
   
   # combined peat depth and condition classes
-  combined <- 100 * extent + condition
+  combined <- 100L * extent + condition
   names(combined) <- "combined_class"
   
   # name of extent map
@@ -204,7 +214,7 @@ summarise_condition_inexact <- function(extent_path,
     rename("condition_int" = "value")
   
   # cell counts
-  output <- terra::extract(combined, geometry, fun = "table", touches = FALSE, bind = TRUE) |> 
+  output <- terra::extract(combined, geometry, fun = "table", touches = FALSE, bind = FALSE) |> 
     as.data.frame() |> 
     pivot_longer(cols = starts_with("count"),
                  names_to = "peat_class",
@@ -236,8 +246,8 @@ summarise_condition_inexact <- function(extent_path,
   output <- output |>
     mutate(
       "pd_50" = class_6,
-      "pd_40" = sum(class_6, class_5, na.rm = FALSE),
-      "pd_30" = sum(class_6, class_5, class_4, na.rm = FALSE)
+      "pd_40" = class_6 + class_5,
+      "pd_30" = class_6 + class_5 + class_4
     ) |>
     pivot_longer(
       cols = c(pd_50, pd_40, pd_30),
