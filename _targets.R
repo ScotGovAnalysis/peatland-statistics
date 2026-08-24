@@ -126,54 +126,30 @@ list(
     command = boundary_rast_targets_expr,
     iteration = "list"
   ),
-  
-
-  # tar_target(
-  #   extent_boundary_combinations,
-  #   tidyr::crossing(
-  #     extent_path = extent_targets,
-  #     boundary_path = boundary_rast_targets
-  #   )
-  # ),
 
   # Analysis ----
 
-  # agreement_target,
-  # 
+  agreement_target,
+
   tar_target(
-    extent_analysis,
-    summarise_extent_crosstab(
+    unclipped_basemap,
+    create_unclipped_basemap(lcs_88_std, lca_std, lcs_88_condition_lookup),
+    format = "file"
+  ),
+  
+  tar_target(
+    baseline_condition_analysis,
+    summarise_condition_crosstab(
       extent_path = extent_targets,
-      boundary_path = boundary_rast_targets
+      boundary_path = boundary_rast_targets,
+      condition_path = unclipped_basemap
     ),
     pattern = cross(extent_targets, boundary_rast_targets)
   ),
-
-  tar_target(
-    extent_analysis_combined,
-    dplyr::bind_rows(extent_analysis)
-  )#,
-  # 
-  # tar_target(
-  #   unclipped_basemap,
-  #   create_unclipped_basemap(lcs_88_std, lca_std, lcs_88_condition_lookup),
-  #   format = "file"
-  # ),
-  # 
-  # tar_target(
-  #   condition_analysis,
-  #   summarise_condition_inexact(
-  #     extent_path = extent_boundary_combinations$extent_path,
-  #     boundary_path = extent_boundary_combinations$boundary_path,
-  #     condition_path = unclipped_basemap
-  #   ),
-  #   pattern = map(extent_boundary_combinations)
-  # ),
-  # 
-  # tar_target(
-  #   condition_analysis_combined,
-  #   dplyr::bind_rows(condition_analysis)
-  # )
-
   
+  tar_target(
+    baseline_condition_analysis_combined,
+    dplyr::bind_rows(baseline_condition_analysis)
+  )
+
 )
