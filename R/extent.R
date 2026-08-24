@@ -181,3 +181,20 @@ summarise_extent_inexact <- function(extent_path, boundary_path) {
   
   output
 }
+
+summarise_extent_crosstab <- function(extent_path, boundary_path){
+  
+  extent_rast <- terra::rast(extent_path)
+  boundary_rast <- terra::rast(boundary_path)
+  
+  cell_area_ha <- prod(terra::res(extent_rast)) / 10000
+  
+  extent_name <- extent_path |> stringr::str_remove("data/processed/") |>
+    stringr::str_remove("_std.tif")
+  
+  output <- terra::crosstab(c(extent_rast, boundary_rast), long = TRUE) |> 
+    mutate(area_ha = n*cell_area_ha, .keep = 'unused')
+  
+  output
+    
+}

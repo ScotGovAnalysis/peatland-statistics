@@ -229,9 +229,11 @@ process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution,
     fs::path(extract_dir, "peat_depth.tif")
   ) |> 
     standardise_ext(extent_list) |> 
-    standardise_res(resolution) |> 
     discretise_peat_depth() |> 
+    standardise_res(resolution, categorical = TRUE) |> 
     apply_land_area_mask(land_area_path)
+  
+  names(r) <- "peat_depth_class"
   
   output_path <- fs::path("data", "processed", "aitkenhead_19_pd_std.tif")
   
@@ -286,9 +288,11 @@ process_gagkas_24_psum_std <- function(source_path, extent_list, resolution,
   
   r <- r |> 
     standardise_ext(extent_list) |> 
-    standardise_res(resolution) |> 
-    discretise_peat_depth()  |> 
+    discretise_peat_depth() |> 
+    standardise_res(resolution, categorical = TRUE) |> 
     apply_land_area_mask(land_area_path)
+  
+  names(r) <- "peat_depth_class"
   
   output_path <- fs::path("data", "processed", "gagkas_24_psum_std.tif")
   
@@ -326,9 +330,10 @@ process_robb_25_pd <- function(source_path, extent_list, resolution) {
   r <- terra::rast(
     source_path
   ) |> 
-    standardise_ext(extent_list) |> 
-    standardise_res(resolution) |> 
-    discretise_peat_depth()
+    discretise_peat_depth() |> 
+    standardise_res(resolution, categorical = TRUE) |> 
+    apply_land_area_mask(land_area_path)
+
   
   output_path <- fs::path("data", "processed", "robb_25_pd_std.tif")
   
@@ -624,6 +629,8 @@ process_ghgi_extent_std <- function(source_path, extent_list, resolution,
     discretise_peat_depth() |> 
     apply_land_area_mask(land_area_path)
   
+  names(output) <- "peat_depth_class"
+  
   output_path <- fs::path("data", "processed", "ghgi_extent_std.tif")
   
   terra::writeRaster(
@@ -657,6 +664,7 @@ rasterize_boundary <- function(source_path, extent_list, resolution){
     output,
     filename = output_path,
     overwrite = TRUE,
+    datatype = "INT1U",
     gdal = c(
       "COMPRESS=ZSTD",
       "TILED=YES"
