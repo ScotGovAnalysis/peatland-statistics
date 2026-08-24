@@ -114,7 +114,7 @@ rast_boundary_values <- processed_target_values |>
   dplyr::filter(type == "boundary") |> 
   dplyr::select(-source_dataset)
 
-boundary_rast_targets <- purrr::pmap(
+boundary_rast_processing_targets <- purrr::pmap(
   rast_boundary_values,
   function(processed_dataset_name, type) {
     
@@ -170,7 +170,7 @@ extent_targets_expr <- tibble::enframe(
   (\(x) as.call(c(as.name("c"), x)))()
 
 
-boundary_targets_expr <- tibble::enframe(
+boundary_rast_targets_expr <- tibble::enframe(
   global_config$processed_datasets,
   name = "processed_dataset_name",
   value = "metadata"
@@ -178,6 +178,7 @@ boundary_targets_expr <- tibble::enframe(
   tidyr::unnest_wider(metadata) |>
   dplyr::filter(type == "boundary") |>
   dplyr::pull(processed_dataset_name) |>
+  paste0("_rast") |> 
   lapply(as.name) |>
   (\(x) as.call(c(as.name("c"), x)))()
 

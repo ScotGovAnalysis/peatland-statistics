@@ -112,6 +112,8 @@ list(
   # Processing ----
   
   processed_targets,
+  
+  boundary_rast_processing_targets,
 
   tar_target_raw(
     name = "extent_targets",
@@ -119,17 +121,16 @@ list(
   ),
 
   tar_target_raw(
-    name = "boundary_targets",
-    command = boundary_targets_expr
+    name = "boundary_rast_targets",
+    command = boundary_rast_targets_expr
   ),
   
-  boundary_rast_targets,
 
   tar_target(
     extent_boundary_combinations,
     tidyr::crossing(
       extent_path = extent_targets,
-      boundary_path = boundary_targets
+      boundary_path = boundary_rast_targets
     )
   ),
 
