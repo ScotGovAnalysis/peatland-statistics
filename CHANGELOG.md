@@ -11,6 +11,19 @@ may change at any time, and the project is not considered stable.
 
 Dates follow YYYY-MM-DD format.
 
+## 0.1.6 2026-08-25
+
+### Removed
+- Separate extent summary functions - now derived from condition analysis
+
+### Added
+- Condition analysis function (raster analysis, inexact)
+- Further processing of boundaries to create raster masks
+
+### Changed
+- Amended targets pipeline to correct dependency tracking bugs
+- Simplified pipeline
+
 ## 0.1.5 2026-08-14
 
 ### Removed
