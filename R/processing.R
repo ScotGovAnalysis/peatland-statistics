@@ -175,19 +175,23 @@ discretise_peat_depth <- function(x) {
 
 #' Apply a land area mask to a raster
 #'
-#' Masks a raster using a land area boundary polygon. Cells whose centres
-#' fall outside the boundary are assigned `NA`. Cells that only touch the
-#' boundary edge are not included because `touches = FALSE` is used.
+#' Masks a raster using a pre-rasterised land area mask. Cells corresponding
+#' to `NA` values in the land area mask are assigned `NA` in the input raster,
+#' while cells within the land area are retained unchanged.
+#'
+#' Using a raster mask avoids repeated vector masking operations and is
+#' typically more efficient when the same land area boundary is applied to
+#' multiple rasters.
 #'
 #' @param extent_raster A `terra::SpatRaster` to be masked.
-#' @param land_area_path Character scalar. Path to a vector dataset
-#'   containing the land area boundary polygon.
+#' @param land_area_path Character scalar. Path to a rasterised land area
+#' mask.
 #'
 #' @return A `terra::SpatRaster` masked to the specified land area.
 #'
 apply_land_area_mask <- function(extent_raster, land_area_path){
-  land_area_bdry <- terra::vect(land_area_path)
-  terra::mask(extent_raster, land_area_bdry, touches = FALSE)
+  land_area_bdry <- terra::rast(land_area_path)
+  terra::mask(extent_raster, land_area_bdry)
 }
 
 
@@ -283,12 +287,11 @@ process_gagkas_24_psum_std <- function(source_path, extent_list, resolution,
   
   r <- terra::rast(source_path) 
     
-  r <- terra::ifel(is.na(r), 0, 
-                   terra::ifel(r == 1, 50, 0))
+  r <- terra::ifel(is.na(r), 0L, 
+                   terra::ifel(r == 1, 6L, 0L))
   
   r <- r |> 
     standardise_ext(extent_list) |> 
-    discretise_peat_depth() |> 
     standardise_res(resolution, categorical = TRUE) |> 
     apply_land_area_mask(land_area_path)
   
@@ -618,6 +621,7 @@ process_ghgi_extent_std <- function(source_path, extent_list, resolution,
                                     land_area_path){
   
   v <- terra::vect(source_path)
+  v$peat_depth_class <- 6L
   
   terra::crs(v) <- "EPSG:27700"
   
@@ -625,8 +629,7 @@ process_ghgi_extent_std <- function(source_path, extent_list, resolution,
                            resolution = resolution,
                            crs = "EPSG:27700")
   
-  output <- terra::rasterize(v, r_template, field = 50, background = 0) |> 
-    discretise_peat_depth() |> 
+  output <- terra::rasterize(v, r_template, field = "peat_depth_class", background = 0L) |> 
     apply_land_area_mask(land_area_path)
   
   names(output) <- "peat_depth_class"
