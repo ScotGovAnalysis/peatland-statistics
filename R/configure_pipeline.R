@@ -79,7 +79,7 @@ processed_targets <- purrr::pmap(
                  source_path = SOURCE,
                  extent_list = common_extent,
                  resolution = common_resolution,
-                 land_area_path = land_area_bdry
+                 land_area_path = land_area_bdry_rast
                ),
              ),
              format = "file"
