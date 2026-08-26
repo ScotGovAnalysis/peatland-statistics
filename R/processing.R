@@ -157,20 +157,19 @@ standardise_ext <- function(r, common_extent) {
 #' @return A `terra::SpatRaster` containing integer peat depth classes
 #' from 0 to 6.
 discretise_peat_depth <- function(x) {
-  terra::ifel(is.na(x), 0,
-              terra::ifel(x == 0, 0, 
-                          terra::classify(
-                            x,
-                            rbind(
-                              c(0, 10, 1),
-                              c(10, 20, 2),
-                              c(20, 30, 3),
-                              c(30, 40, 4),
-                              c(40, 50, 5),
-                              c(50, Inf, 6)
-                            ),
-                            right = FALSE # intervals left closed, right open [a,b)
-                          )))
+  terra::ifel(x == 0, 0, 
+              terra::classify(
+                x,
+                rbind(
+                  c(0, 10, 1),
+                  c(10, 20, 2),
+                  c(20, 30, 3),
+                  c(30, 40, 4),
+                  c(40, 50, 5),
+                  c(50, Inf, 6)
+                ),
+                right = FALSE # intervals left closed, right open [a,b)
+              ))
 }
 
 #' Apply a land area mask to a raster
@@ -178,10 +177,6 @@ discretise_peat_depth <- function(x) {
 #' Masks a raster using a pre-rasterised land area mask. Cells corresponding
 #' to `NA` values in the land area mask are assigned `NA` in the input raster,
 #' while cells within the land area are retained unchanged.
-#'
-#' Using a raster mask avoids repeated vector masking operations and is
-#' typically more efficient when the same land area boundary is applied to
-#' multiple rasters.
 #'
 #' @param extent_raster A `terra::SpatRaster` to be masked.
 #' @param land_area_path Character scalar. Path to a rasterised land area
@@ -201,8 +196,7 @@ apply_land_area_mask <- function(extent_raster, land_area_path){
 #'
 #' Extracts the source raster from a ZIP archive, standardises it to a
 #' common spatial extent and resolution, categorises peat depth values
-#' using [discretise_peat_depth()], applies a land area mask using
-#' [apply_land_area_mask()] and writes the result to a GeoTIFF.
+#' using [discretise_peat_depth()] and writes the result to a GeoTIFF.
 #'
 #' Original resolution: 100 m.
 #'
@@ -219,13 +213,10 @@ apply_land_area_mask <- function(extent_raster, land_area_path){
 #' [standardise_ext()].
 #' @param resolution Target raster resolution passed to
 #' [standardise_res()].
-#' @param land_area_path Character scalar. Path to the land area boundary
-#' dataset passed to [apply_land_area_mask()].
 #'
 #' @return A character scalar giving the path to the processed raster file.
 #' Intended for use with `targets` file targets (`format = "file"`).
-process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution,
-                                         land_area_path){
+process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution){
   
   extract_dir <- unzip_to_temp(source_path)
   
@@ -234,8 +225,7 @@ process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution,
   ) |> 
     standardise_ext(extent_list) |> 
     discretise_peat_depth() |> 
-    standardise_res(resolution, categorical = TRUE) |> 
-    apply_land_area_mask(land_area_path)
+    standardise_res(resolution, categorical = TRUE)
   
   names(r) <- "peat_depth_class"
   
@@ -260,8 +250,7 @@ process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution,
 #' Reads the source raster, converts peat soil presence values to a nominal
 #' peat depth of 50 cm and all other values to 0 cm, standardises the raster
 #' to a common spatial extent and resolution, categorises values using
-#' [discretise_peat_depth()], applies a land area mask using
-#' [apply_land_area_mask()] and writes the result to a GeoTIFF.
+#' [discretise_peat_depth()] and writes the result to a GeoTIFF.
 #'
 #' Original resolution: 50 m.
 #'
@@ -277,23 +266,18 @@ process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution,
 #' [standardise_ext()].
 #' @param resolution Target raster resolution passed to
 #' [standardise_res()].
-#' @param land_area_path Character scalar. Path to the land area boundary
-#' dataset passed to [apply_land_area_mask()].
 #'
 #' @return A character scalar giving the path to the processed raster file.
 #' Intended for use with `targets` file targets (`format = "file"`). 
-process_gagkas_24_psum_std <- function(source_path, extent_list, resolution,
-                                       land_area_path) {
+process_gagkas_24_psum_std <- function(source_path, extent_list, resolution) {
   
   r <- terra::rast(source_path) 
     
-  r <- terra::ifel(is.na(r), 0L, 
-                   terra::ifel(r == 1, 6L, 0L))
+  r <- terra::ifel(r == 1, 6L, 0L)
   
   r <- r |> 
     standardise_ext(extent_list) |> 
-    standardise_res(resolution, categorical = TRUE) |> 
-    apply_land_area_mask(land_area_path)
+    standardise_res(resolution, categorical = TRUE)
   
   names(r) <- "peat_depth_class"
   
@@ -334,8 +318,7 @@ process_robb_25_pd <- function(source_path, extent_list, resolution) {
     source_path
   ) |> 
     discretise_peat_depth() |> 
-    standardise_res(resolution, categorical = TRUE) |> 
-    apply_land_area_mask(land_area_path)
+    standardise_res(resolution, categorical = TRUE) 
 
   
   output_path <- fs::path("data", "processed", "robb_25_pd_std.tif")
@@ -611,14 +594,11 @@ process_ghgi_condition_std <- function(source_path, extent_list, resolution){
 #'   raster.
 #' @param resolution Numeric. Output raster resolution in map units
 #'   (metres).
-#' @param land_area_path Character scalar. Path to the land area boundary
-#'   dataset passed to [apply_land_area_mask()].
 #'
 #' @return A character scalar giving the path to the processed GeoTIFF
 #'   file. Intended for use with `targets` file targets (`format = "file"`).
 #'
-process_ghgi_extent_std <- function(source_path, extent_list, resolution,
-                                    land_area_path){
+process_ghgi_extent_std <- function(source_path, extent_list, resolution){
   
   v <- terra::vect(source_path)
   v$peat_depth_class <- 6L
@@ -629,8 +609,7 @@ process_ghgi_extent_std <- function(source_path, extent_list, resolution,
                            resolution = resolution,
                            crs = "EPSG:27700")
   
-  output <- terra::rasterize(v, r_template, field = "peat_depth_class", background = 0L) |> 
-    apply_land_area_mask(land_area_path)
+  output <- terra::rasterize(v, r_template, field = "peat_depth_class", background = 0L)
   
   names(output) <- "peat_depth_class"
   
