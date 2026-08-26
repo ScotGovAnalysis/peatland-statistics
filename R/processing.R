@@ -667,12 +667,132 @@ rasterize_boundary <- function(source_path, extent_list, resolution){
     output,
     filename = output_path,
     overwrite = TRUE,
-    datatype = "INT1U",
+    datatype = "INT2U",
     gdal = c(
       "COMPRESS=ZSTD",
       "TILED=YES"
     )
   )
   
+  output_path
+}
+
+#' Process Loch Lomond and the Trossachs National Park boundary
+#'
+#' Extracts the boundary dataset from a ZIP archive,
+#' reads the boundary geometries, standardises the boundary attributes to
+#' a common schema (`boundary_class` and `boundary_name`), and writes the
+#' result to a GeoPackage for use in downstream analyses.
+#'
+#' @param source_path Character vector containing the path to the downloaded
+#'   ZIP archive. The first element is assumed to be the archive containing
+#'   the boundary dataset.
+#'
+#' @return A character scalar giving the path to the processed GeoPackage
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_lltnp_bdry <- function(source_path){
+  
+  zip_file_path <- source_path[[1]]
+  
+  extract_dir <- unzip_to_temp(zip_file_path)
+  
+  v <- terra::vect(
+    fs::path(extract_dir, "SG_LochLomondTrossachsNationalPark_2002.shp")
+  )
+  
+  v$boundary_class <- "national park"
+  v$boundary_name <- "lltnp"
+  
+  v <- v[, c("boundary_class", "boundary_name")]
+  
+  output_path <- fs::path("data", "processed", "lltnp.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+  
+  output_path
+}
+
+#' Process Cairngorms National Park boundary
+#'
+#' Extracts the boundary dataset from a ZIP archive,
+#' reads the boundary geometries, standardises the boundary attributes to
+#' a common schema (`boundary_class` and `boundary_name`), and writes the
+#' result to a GeoPackage for use in downstream analyses.
+#'
+#' @param source_path Character vector containing the path to the downloaded
+#'   ZIP archive. The first element is assumed to be the archive containing
+#'   the boundary dataset.
+#'
+#' @return A character scalar giving the path to the processed GeoPackage
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_cnp_bdry <- function(source_path){
+  
+  zip_file_path <- source_path[[1]]
+  
+  extract_dir <- unzip_to_temp(zip_file_path)
+  
+  v <- terra::vect(
+    fs::path(extract_dir, "SG_CairngormsNationalPark_2010.shp")
+  )
+  
+  v$boundary_class <- "national park"
+  v$boundary_name <- "cnp"
+  
+  v <- v[, c("boundary_class", "boundary_name")]
+  
+  output_path <- fs::path("data", "processed", "cnp.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+  
+  output_path
+}
+
+#' Process Main River and Coastal catchment boundaries
+#'
+#' Extracts the boundary dataset from a ZIP archive,
+#' reads the boundary geometries, standardises the boundary attributes to
+#' a common schema (`boundary_class` and `boundary_name`), and writes the
+#' result to a GeoPackage for use in downstream analyses.
+#'
+#' @param source_path Character vector containing the path to the downloaded
+#'   ZIP archive. The first element is assumed to be the archive containing
+#'   the boundary dataset.
+#'
+#' @return A character scalar giving the path to the processed GeoPackage
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_catchments_bdry <- function(source_path){
+
+  zip_file_path <- source_path[[1]]
+
+  extract_dir <- unzip_to_temp(zip_file_path)
+
+  v <- terra::vect(
+    fs::path(extract_dir, "SEPA_CATCHMENTS_BNG.gpkg")
+  )
+
+  v$boundary_class <- "catchments"
+  v$boundary_name <- v$CATCHMENT
+
+  v <- v[, c("boundary_class", "boundary_name")]
+
+  output_path <- fs::path("data", "processed", "catchments.gpkg")
+
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+
   output_path
 }
