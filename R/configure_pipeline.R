@@ -78,7 +78,8 @@ processed_targets <- purrr::pmap(
                PROCESSOR(
                  source_path = SOURCE,
                  extent_list = common_extent,
-                 resolution = common_resolution
+                 resolution = common_resolution,
+                 land_area_path = land_area_bdry_rast
                ),
              ),
              format = "file"
@@ -149,8 +150,7 @@ agreement_target <- tar_target_raw(
   command = bquote(
     create_agreement_map(
       input_paths = .(agreement_input_expr),
-      peat_class = agreement_analysis_peat_class,
-      land_area_path = land_area_mhw_bdry_rast
+      peat_class = agreement_analysis_peat_class
     )
   ),
   format = "file"

@@ -174,6 +174,9 @@ summarise_condition_crosstab <- function(extent_path, boundary_path, condition_p
            boundary_class = boundary_class_name,
            boundary_name = as.character(boundary_name),
            .keep = 'unused') |> 
+    group_by(boundary_name) |>
+    mutate(land_area_ha = sum(area_ha, na.rm = TRUE)) |>
+    ungroup() |>
     pivot_wider(names_from = peat_depth_class,
                 names_prefix = "class_",
                 values_from = area_ha,
@@ -213,7 +216,8 @@ summarise_condition_crosstab <- function(extent_path, boundary_path, condition_p
       area_ha,
       total_pd_50,
       total_pd_40,
-      total_pd_30
+      total_pd_30,
+      land_area_ha
     )
 
   output

@@ -20,20 +20,12 @@
 #'
 create_agreement_map <- function(
     input_paths,
-    peat_class = 6,
-    land_area_path
+    peat_class = 6
 ) {
   
   s <- terra::rast(input_paths)
   
   agree <- sum(s == peat_class, na.rm = TRUE)
-  
-  mask <- terra::rast(land_area_path)
-  
-  agree <- terra::cover(
-    terra::mask(agree, mask),
-    mask * 0
-  )
   
   fs::dir_create(
     fs::path("data", "outputs")
