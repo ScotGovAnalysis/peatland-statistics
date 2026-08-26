@@ -337,7 +337,7 @@ process_robb_25_pd <- function(source_path, extent_list, resolution) {
   output_path
 }
 
-#' Process Scotland land area boundary
+#' Process Scotland land area boundary - Mean High Water
 #'
 #' Extracts the Intermediate Zone 2022 boundary dataset, dissolves all
 #' boundaries into a single land area polygon, attaches standard boundary
@@ -351,7 +351,7 @@ process_robb_25_pd <- function(source_path, extent_list, resolution) {
 #'
 #' @return Character scalar giving the path to the output GeoPackage.
 #'
-process_land_area_bdry <- function(source_path){
+process_land_area_mhw_bdry <- function(source_path){
   
   zip_file_path <- source_path[[1]]
   
@@ -364,11 +364,11 @@ process_land_area_bdry <- function(source_path){
   v <- terra::aggregate(v)
   
   v$boundary_class <- "land area"
-  v$boundary_name <- "land area"
+  v$boundary_name <- "mhw"
   
   v <- v[, c("boundary_class", "boundary_name")]
   
-  output_path <- fs::path("data", "processed", "land_area.gpkg")
+  output_path <- fs::path("data", "processed", "land_area_mhw.gpkg")
   
   terra::writeVector(
     v,
@@ -378,6 +378,46 @@ process_land_area_bdry <- function(source_path){
   
   output_path
 }
+
+#' Process Scotland land area boundary - Extent of Realm
+#'
+#' Extracts the Intermediate Zone 2022 boundary dataset, dissolves all
+#' boundaries into a single land area polygon, attaches standard boundary
+#' metadata, and writes the result to a GeoPackage.
+#'
+#' @param source_path Character vector or list containing the path to the
+#' downloaded boundary ZIP file in the first element.
+#'
+#' @return Character scalar giving the path to the output GeoPackage.
+#'
+process_land_area_eor_bdry <- function(source_path){
+  
+  zip_file_path <- source_path[[1]]
+  
+  extract_dir <- unzip_to_temp(zip_file_path)
+  
+  v <- terra::vect(
+    fs::path(extract_dir, "SG_IntermediateZoneBdry_2022_EoR.shp")
+  )
+  
+  v <- terra::aggregate(v)
+  
+  v$boundary_class <- "land area"
+  v$boundary_name <- "eor"
+  
+  v <- v[, c("boundary_class", "boundary_name")]
+  
+  output_path <- fs::path("data", "processed", "land_area_eor.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+  
+  output_path
+}
+
 
 #' Process local authority boundary dataset
 #'
