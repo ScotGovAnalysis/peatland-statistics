@@ -163,6 +163,7 @@ summarise_condition_crosstab <- function(extent_path, boundary_path, condition_p
     mutate(area_ha = n*cell_area_ha,
            extent_source = extent_name,
            boundary_class = boundary_class_name,
+           boundary_name = as.character(boundary_name),
            .keep = 'unused') |> 
     group_by(boundary_name) |>
     mutate(land_area_ha = sum(area_ha, na.rm = TRUE)) |>
