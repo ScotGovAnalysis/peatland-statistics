@@ -833,13 +833,12 @@ process_catchments_bdry <- function(source_path){
 
 #' Process agricultural land boundary - (BPS claimed land and common grazings)
 #'
-#' Extracts the boundary dataset from a ZIP archive,
-#' reads the boundary geometries, standardises the boundary attributes to
+#' Reads the boundary geometries, standardises the boundary attributes to
 #' a common schema (`boundary_key`), and writes the
 #' result to a GeoPackage for use in downstream analyses.
 #'
-#' @param source_path Character vector containing the path to the downloaded
-#'   ZIP archive. The first element is assumed to be the archive containing
+#' @param source_path Character vector containing the path source file
+#' The first element is assumed to be the archive containing
 #'   the boundary dataset.
 #'
 #' @return A character scalar giving the path to the processed GeoPackage
@@ -847,17 +846,11 @@ process_catchments_bdry <- function(source_path){
 #'
 process_agri_bdry <- function(source_path){
   
-  zip_file_path <- source_path[[1]]
-  
-  extract_dir <- unzip_to_temp(zip_file_path)
-  
-  v <- terra::vect(
-    fs::path(extract_dir, "")
-  )
+  v <- terra::vect(source_path)
   
   v$boundary_key <- paste0("agricultural land",":::",v$class)
   
-  v <- v[, boundary_key]
+  v <- v[, "boundary_key"]
   
   output_path <- fs::path("data", "processed", "agri.gpkg")
   
@@ -872,13 +865,12 @@ process_agri_bdry <- function(source_path){
 
 #' Process public land boundary
 #'
-#' Extracts the boundary dataset from a ZIP archive,
-#' reads the boundary geometries, standardises the boundary attributes to
+#' Reads the boundary geometries, standardises the boundary attributes to
 #' a common schema (`boundary_key`), and writes the
 #' result to a GeoPackage for use in downstream analyses.
 #'
-#' @param source_path Character vector containing the path to the downloaded
-#'   ZIP archive. The first element is assumed to be the archive containing
+#' @param source_path Character vector containing the path source file
+#' The first element is assumed to be the archive containing
 #'   the boundary dataset.
 #'
 #' @return A character scalar giving the path to the processed GeoPackage
@@ -886,17 +878,11 @@ process_agri_bdry <- function(source_path){
 #'
 process_public_land_bdry <- function(source_path){
   
-  zip_file_path <- source_path[[1]]
-  
-  extract_dir <- unzip_to_temp(zip_file_path)
-  
-  v <- terra::vect(
-    fs::path(extract_dir, "")
-  )
+  v <- terra::vect(source_path)
   
   v$boundary_key <- paste0("public land",":::","public land")
   
-  v <- v[, boundary_key]
+  v <- v[, "boundary_key"]
   
   output_path <- fs::path("data", "processed", "public_land.gpkg")
   
