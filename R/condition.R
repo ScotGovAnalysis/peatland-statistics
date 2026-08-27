@@ -29,8 +29,8 @@ create_unclipped_basemap <- function(lcs_88_std,
   ) |> 
     dplyr::bind_rows(
       data.frame(value = 200, # add value to facilitate uplands correction
-                 DOMTEXT = "LCA uplands uorrection",
-                 condition = "LCA uplands correction")
+                 DOMTEXT = "modified bog (lca uplands correction)",
+                 condition = "modified bog (lca uplands correction)")
     ) |> 
     dplyr::arrange(condition) |> 
     dplyr::group_by(condition) |>
@@ -59,7 +59,7 @@ create_unclipped_basemap <- function(lcs_88_std,
     dplyr::first()
   
   uplands_correction_value <- labels |>
-    dplyr::filter(condition == "LCA uplands correction") |>
+    dplyr::filter(condition == "modified bog (lca uplands correction)") |>
     dplyr::pull(condition_value) |> 
     dplyr::first()
   
