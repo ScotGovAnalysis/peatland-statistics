@@ -855,11 +855,50 @@ process_agri_bdry <- function(source_path){
     fs::path(extract_dir, "")
   )
   
-  v$boundary_key <- paste0("agricultural land",":::",)
+  v$boundary_key <- paste0("agricultural land",":::",v$class)
   
   v <- v[, boundary_key]
   
-  output_path <- fs::path("data", "processed", "agri_bps.gpkg")
+  output_path <- fs::path("data", "processed", "agri.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+  
+  output_path
+}
+
+#' Process public land boundary
+#'
+#' Extracts the boundary dataset from a ZIP archive,
+#' reads the boundary geometries, standardises the boundary attributes to
+#' a common schema (`boundary_key`), and writes the
+#' result to a GeoPackage for use in downstream analyses.
+#'
+#' @param source_path Character vector containing the path to the downloaded
+#'   ZIP archive. The first element is assumed to be the archive containing
+#'   the boundary dataset.
+#'
+#' @return A character scalar giving the path to the processed GeoPackage
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_public_land_bdry <- function(source_path){
+  
+  zip_file_path <- source_path[[1]]
+  
+  extract_dir <- unzip_to_temp(zip_file_path)
+  
+  v <- terra::vect(
+    fs::path(extract_dir, "")
+  )
+  
+  v$boundary_key <- paste0("public land",":::","public land")
+  
+  v <- v[, boundary_key]
+  
+  output_path <- fs::path("data", "processed", "public_land.gpkg")
   
   terra::writeVector(
     v,
