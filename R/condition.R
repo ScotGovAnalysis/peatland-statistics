@@ -162,19 +162,21 @@ summarise_condition_crosstab <- function(extent_path, boundary_path, condition_p
   condition <- terra::rast(condition_path)
   cell_area_ha <- prod(terra::res(extent)) / 10000
   
-  # name of extent map and boundary
+  # name of extent map 
   extent_name <- extent_path |> stringr::str_remove("data/processed/") |>
     stringr::str_remove("_std.tif")
-  boundary_class_name <- boundary_path |> stringr::str_remove("data/processed/") |>
-    stringr::str_remove("_rast.tif")
   
   output <- terra::crosstab(c(boundary, extent, condition), long = TRUE) |> 
+    tidyr::separate_wider_delim(
+      boundary_key,
+      delim = ":::",
+      names = c("boundary_class", "boundary_name"),
+      cols_remove = FALSE
+    ) |> 
     mutate(area_ha = n*cell_area_ha,
            extent_source = extent_name,
-           boundary_class = boundary_class_name,
-           boundary_name = as.character(boundary_name),
            .keep = 'unused') |> 
-    group_by(boundary_name) |>
+    group_by(boundary_key) |>
     mutate(land_area_ha = sum(area_ha, na.rm = TRUE)) |>
     ungroup() |>
     pivot_wider(names_from = peat_depth_class,
@@ -208,6 +210,7 @@ summarise_condition_crosstab <- function(extent_path, boundary_path, condition_p
       values_to = "area_ha"
     ) |>
     select(
+      boundary_key,
       boundary_class,
       boundary_name,
       extent_source,

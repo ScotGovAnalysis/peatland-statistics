@@ -395,11 +395,10 @@ process_land_area_bdry <- function(source_path){
   )
   
   v <- terra::aggregate(v)
+
+  v$boundary_key <- paste0("land_area",":::","mhw")
   
-  v$boundary_class <- "land area"
-  v$boundary_name <- "land area"
-  
-  v <- v[, c("boundary_class", "boundary_name")]
+  v <- v[, "boundary_key"]
   
   output_path <- fs::path("data", "processed", "land_area.gpkg")
   
@@ -417,7 +416,7 @@ process_land_area_bdry <- function(source_path){
 #'
 #' Extracts the local authority boundary dataset from a ZIP archive,
 #' reads the boundary geometries, standardises the boundary attributes to
-#' a common schema (`boundary_class` and `boundary_name`), and writes the
+#' a common schema (`boundary_key`), and writes the
 #' result to a GeoPackage for use in downstream analyses.
 #'
 #' @param source_path Character vector containing the path to the downloaded
@@ -437,10 +436,9 @@ process_las_bdry <- function(source_path){
     fs::path(extract_dir, "pub_las.shp")
   )
   
-  v$boundary_class <- "local authority"
-  v$boundary_name <- v$local_auth
+  v$boundary_key <- paste0("local authority",":::",v$local_auth)
   
-  v <- v[, c("boundary_class", "boundary_name")]
+  v <- v[, "boundary_key"]
   
   output_path <- fs::path("data", "processed", "las.gpkg")
   
@@ -668,6 +666,26 @@ process_ghgi_extent_std <- function(source_path, extent_list, resolution,
   output_path
 }
 
+#' Rasterise a boundary dataset
+#'
+#' Reads a processed boundary GeoPackage, creates a raster template from the
+#' supplied extent and resolution, and rasterises the `boundary_key`
+#' attribute onto the target grid.
+#'
+#' The output raster is written as an unsigned 16-bit integer GeoTIFF with
+#' ZSTD compression and tiled storage. The output filename is derived from the
+#' input GeoPackage path by replacing the `.gpkg` suffix with `_rast.tif`.
+#'
+#' @param source_path Character scalar. Path to a processed boundary
+#' GeoPackage containing a `boundary_key` field.
+#' @param extent_list List defining the spatial extent of the output raster.
+#' @param resolution Numeric scalar. Output raster resolution in map units
+#' (metres).
+#'
+#' @return A character scalar giving the path to the rasterised boundary
+#' GeoTIFF. Intended for use with `targets` file targets
+#' (`format = "file"`).
+#'
 rasterize_boundary <- function(source_path, extent_list, resolution){
   
   v <- terra::vect(source_path)
@@ -678,7 +696,7 @@ rasterize_boundary <- function(source_path, extent_list, resolution){
                            resolution = resolution,
                            crs = "EPSG:27700")
   
-  output <- terra::rasterize(v, r_template, field = "boundary_name")
+  output <- terra::rasterize(v, r_template, field = "boundary_key")
   
   output_path <- stringr::str_replace(source_path, "\\.gpkg", "_rast.tif")
   
@@ -700,7 +718,7 @@ rasterize_boundary <- function(source_path, extent_list, resolution){
 #'
 #' Extracts the boundary dataset from a ZIP archive,
 #' reads the boundary geometries, standardises the boundary attributes to
-#' a common schema (`boundary_class` and `boundary_name`), and writes the
+#' a common schema (`boundary_key`), and writes the
 #' result to a GeoPackage for use in downstream analyses.
 #'
 #' @param source_path Character vector containing the path to the downloaded
@@ -720,10 +738,9 @@ process_lltnp_bdry <- function(source_path){
     fs::path(extract_dir, "SG_LochLomondTrossachsNationalPark_2002.shp")
   )
   
-  v$boundary_class <- "national park"
-  v$boundary_name <- "lltnp"
+  v$boundary_key <- paste0("national park", ":::", "lltnp")
   
-  v <- v[, c("boundary_class", "boundary_name")]
+  v <- v[, "boundary_key"]
   
   output_path <- fs::path("data", "processed", "lltnp.gpkg")
   
@@ -760,10 +777,9 @@ process_cnp_bdry <- function(source_path){
     fs::path(extract_dir, "SG_CairngormsNationalPark_2010.shp")
   )
   
-  v$boundary_class <- "national park"
-  v$boundary_name <- "cnp"
+  v$boundary_key <- paste0("national park",":::","cnp")
   
-  v <- v[, c("boundary_class", "boundary_name")]
+  v <- v[, "boundary_key"]
   
   output_path <- fs::path("data", "processed", "cnp.gpkg")
   
@@ -800,10 +816,9 @@ process_catchments_bdry <- function(source_path){
     fs::path(extract_dir, "SEPA_CATCHMENTS_BNG.gpkg")
   )
 
-  v$boundary_class <- "catchments"
-  v$boundary_name <- v$CATCHMENT
+  v$boundary_key <- paste0("catchment",":::",v$CATCHMENT)
 
-  v <- v[, c("boundary_class", "boundary_name")]
+  v <- v[, "boundary_key"]
 
   output_path <- fs::path("data", "processed", "catchments.gpkg")
 
@@ -813,5 +828,44 @@ process_catchments_bdry <- function(source_path){
     overwrite = TRUE
   )
 
+  output_path
+}
+
+#' Process agricultural land boundary - (BPS claimed land and common grazings)
+#'
+#' Extracts the boundary dataset from a ZIP archive,
+#' reads the boundary geometries, standardises the boundary attributes to
+#' a common schema (`boundary_key`), and writes the
+#' result to a GeoPackage for use in downstream analyses.
+#'
+#' @param source_path Character vector containing the path to the downloaded
+#'   ZIP archive. The first element is assumed to be the archive containing
+#'   the boundary dataset.
+#'
+#' @return A character scalar giving the path to the processed GeoPackage
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_agri_bdry <- function(source_path){
+  
+  zip_file_path <- source_path[[1]]
+  
+  extract_dir <- unzip_to_temp(zip_file_path)
+  
+  v <- terra::vect(
+    fs::path(extract_dir, "")
+  )
+  
+  v$boundary_key <- paste0("agricultural land",":::",)
+  
+  v <- v[, boundary_key]
+  
+  output_path <- fs::path("data", "processed", "agri_bps.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+  
   output_path
 }
