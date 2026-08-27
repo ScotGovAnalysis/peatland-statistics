@@ -5,6 +5,10 @@
 # Many targets use static branching: 
 # https://books.ropensci.org/targets/static.html
 
+# global config
+
+global_config <- yaml::read_yaml("config/config.yml")
+
 # Ensure directories exist for data
 
 fs::path("data", "raw") |> fs::dir_create()
@@ -29,10 +33,10 @@ verify_target_values <-
   input_target_values |>
   dplyr::filter(fun == "verify")
 
-download_targets <- tar_map(
+download_targets <- tarchetypes::tar_map(
   values = download_target_values,
   names = input_dataset_name,
-  tar_target(
+  targets::tar_target(
     input,
     download_dataset(
       input_dataset_name,
@@ -42,10 +46,10 @@ download_targets <- tar_map(
   )
 )
 
-verify_targets <- tar_map(
+verify_targets <- tarchetypes::tar_map(
   values = verify_target_values,
   names = input_dataset_name,
-  tar_target(
+  targets::tar_target(
     input,
     verify_dataset(input_dataset_name,
                    filename),
@@ -72,7 +76,7 @@ processed_targets <- purrr::pmap(
     
     switch(type,
            # extent
-           extent = tar_target_raw(
+           extent = targets::tar_target_raw(
              name = processed_dataset_name,
              command = substitute(
                PROCESSOR(
@@ -85,7 +89,7 @@ processed_targets <- purrr::pmap(
              format = "file"
            ),
            # boundary
-           boundary = tar_target_raw(
+           boundary = targets::tar_target_raw(
              name = processed_dataset_name,
              command = substitute(
                PROCESSOR(
@@ -95,7 +99,7 @@ processed_targets <- purrr::pmap(
              format = "file"
            ),
            # condition
-           condition = tar_target_raw(
+           condition = targets::tar_target_raw(
              name = processed_dataset_name,
              command = substitute(
                PROCESSOR(
@@ -119,7 +123,7 @@ boundary_rast_processing_targets <- purrr::pmap(
   function(processed_dataset_name, type) {
     
     SOURCE = as.name(processed_dataset_name)
-    tar_target_raw(
+    targets::tar_target_raw(
       name = paste0(processed_dataset_name,"_rast"),
       command = substitute(
         rasterize_boundary(
@@ -145,7 +149,7 @@ agreement_input_expr <- as.call(
   )
 )
 
-agreement_target <- tar_target_raw(
+agreement_target <- targets::tar_target_raw(
   name = "agreement_map",
   command = bquote(
     create_agreement_map(

@@ -41,9 +41,9 @@ if (global_config$crew$use_crew) {
   )
 }
 
+# tar_source("other_functions.R") # Source other scripts as needed.
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
-# tar_source("other_functions.R") # Source other scripts as needed.
 
 # Replace the target list below with your own:
 

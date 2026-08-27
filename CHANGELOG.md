@@ -11,6 +11,14 @@ may change at any time, and the project is not considered stable.
 
 Dates follow YYYY-MM-DD format.
 
+## 0.1.7 2026-08-27
+### Added
+- unit testing for processing.R
+- processing for agricultural land and public land boundaries
+
+### Changed
+- unique boundary_key attribute provided for each boundary geometry for efficient analysis
+
 ## 0.1.6 2026-08-25
 
 ### Removed
