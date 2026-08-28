@@ -33,6 +33,10 @@ verify_target_values <-
   input_target_values |>
   dplyr::filter(fun == "verify")
 
+arcgol_api_target_values <-
+  input_target_values |>
+  dplyr::filter(fun == "arcgol_api")
+
 download_targets <- tarchetypes::tar_map(
   values = download_target_values,
   names = input_dataset_name,
@@ -53,6 +57,19 @@ verify_targets <- tarchetypes::tar_map(
     input,
     verify_dataset(input_dataset_name,
                    filename),
+    format = "file"
+  )
+)
+
+arcgol_api_targets <- tarchetypes::tar_map(
+  values = arcgol_api_target_values,
+  names = input_dataset_name,
+  targets::tar_target(
+    input,
+    download_arcgol_api_dataset(
+      input_dataset_name,
+      public_data_catalogue
+    ),
     format = "file"
   )
 )

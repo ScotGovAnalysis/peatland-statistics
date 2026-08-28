@@ -96,6 +96,14 @@ list(
   ),
   
   tar_target(
+    public_data_catalogue_validation,
+    validate_public_data_catalogue_datasets(
+      config,
+      public_data_catalogue
+    )
+  ),
+  
+  tar_target(
     lcs_88_condition_lookup_file,
     fs::path("config", "lcs_88_condition_lookup.csv"),
     format = "file"
@@ -108,6 +116,7 @@ list(
 
   download_targets,
   verify_targets,
+  arcgol_api_targets,
   
   # Processing ----
   
