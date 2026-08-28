@@ -21,7 +21,6 @@ Development adheres to the [Code of Practice for Statistics](https://code.statis
 -   `R/` – reusable functions
 -   `data/` – raw, processed, and sample data
 -   `outputs/` – generated tables, charts, and spatial outputs
--   `quality/` – unit tests and validation scripts
 -   `config/` – configuration files
 
 ------------------------------------------------------------------------
@@ -80,8 +79,15 @@ Sample data may be included in `data/sample/` for demonstration and testing purp
 
 This repository includes both unit testing and high-level validation:
 
--   Unit tests: `quality/tests/`
--   Validation scripts: `quality/validation/`
+-   Unit tests: `tests/testthat`
+-   Validation scripts: `R/validation.R`
+
+Unit testing is based on the [testthat](https://testthat.r-lib.org/index.html) package. 
+To run all unit tests, enter:
+```r
+targets::tar_source()
+testthat::test_dir(fs::path("tests", "testthat"))
+```
 
 ------------------------------------------------------------------------
 

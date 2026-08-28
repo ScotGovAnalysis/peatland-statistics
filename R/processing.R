@@ -157,37 +157,39 @@ standardise_ext <- function(r, common_extent) {
 #' @return A `terra::SpatRaster` containing integer peat depth classes
 #' from 0 to 6.
 discretise_peat_depth <- function(x) {
-  terra::ifel(is.na(x), 0,
-              terra::ifel(x == 0, 0, 
-                          terra::classify(
-                            x,
-                            rbind(
-                              c(0, 10, 1),
-                              c(10, 20, 2),
-                              c(20, 30, 3),
-                              c(30, 40, 4),
-                              c(40, 50, 5),
-                              c(50, Inf, 6)
-                            ),
-                            right = FALSE # intervals left closed, right open [a,b)
-                          )))
+  terra::ifel(x == 0, 0, 
+              terra::classify(
+                x,
+                rbind(
+                  c(0, 10, 1),
+                  c(10, 20, 2),
+                  c(20, 30, 3),
+                  c(30, 40, 4),
+                  c(40, 50, 5),
+                  c(50, Inf, 6)
+                ),
+                right = FALSE # intervals left closed, right open [a,b)
+              ))
 }
 
 #' Apply a land area mask to a raster
 #'
-#' Masks a raster using a land area boundary polygon. Cells whose centres
-#' fall outside the boundary are assigned `NA`. Cells that only touch the
-#' boundary edge are not included because `touches = FALSE` is used.
+#' Masks a raster using a pre-rasterised land area mask. Cells outside the
+#' land area are assigned `NA`, while any `NA` values within the land area
+#' are replaced with `0`.
 #'
 #' @param extent_raster A `terra::SpatRaster` to be masked.
-#' @param land_area_path Character scalar. Path to a vector dataset
-#'   containing the land area boundary polygon.
+#' @param land_area_path Character scalar. Path to a rasterised land area
+#' mask, where non-`NA` cells define the land area extent.
 #'
-#' @return A `terra::SpatRaster` masked to the specified land area.
-#'
+#' @return A `terra::SpatRaster` constrained to the specified land area, with
+#' internal `NA` values replaced by `0`.
 apply_land_area_mask <- function(extent_raster, land_area_path){
-  land_area_bdry <- terra::vect(land_area_path)
-  terra::mask(extent_raster, land_area_bdry, touches = FALSE)
+  land_area_bdry <- terra::rast(land_area_path)
+  result <- terra::cover(
+    terra::mask(extent_raster, land_area_bdry),
+    land_area_bdry * 0
+  )
 }
 
 
@@ -196,27 +198,28 @@ apply_land_area_mask <- function(extent_raster, land_area_path){
 #' Process the Aitkenhead (2019) peat depth dataset
 #'
 #' Extracts the source raster from a ZIP archive, standardises it to a
-#' common spatial extent and resolution, categorises peat depth values
-#' using [discretise_peat_depth()], applies a land area mask using
-#' [apply_land_area_mask()] and writes the result to a GeoTIFF.
+#' common spatial extent and resolution, classifies peat depth values using
+#' [discretise_peat_depth()], applies a Scotland land area mask, and writes
+#' the result to a GeoTIFF.
 #'
 #' Original resolution: 100 m.
 #'
-#' The output raster contains peat depth classes represented by the
-#' integers 0 to 6, where higher values correspond to greater peat depth.
-#' Cells outside the Scotland land area boundary are assigned `NA`.
+#' The output raster contains peat depth classes represented by integer
+#' values from 0 to 6, where higher values correspond to greater peat depth.
+#' Cells outside the Scotland land area boundary are assigned `NA`, and any
+#' missing values within the land area are replaced with `0`.
 #'
-#' The output is stored as an unsigned 8-bit integer raster with tiled
-#' storage.
+#' The output is written as an unsigned 8-bit integer raster with ZSTD
+#' compression and tiled storage.
 #'
-#' @param source_path Path to the ZIP archive containing the source peat
-#' depth raster.
-#' @param extent_list A list defining the target spatial extent passed to
+#' @param source_path Character scalar. Path to the ZIP archive containing
+#' the source peat depth raster.
+#' @param extent_list List defining the target spatial extent passed to
 #' [standardise_ext()].
-#' @param resolution Target raster resolution passed to
+#' @param resolution Numeric scalar. Target raster resolution passed to
 #' [standardise_res()].
-#' @param land_area_path Character scalar. Path to the land area boundary
-#' dataset passed to [apply_land_area_mask()].
+#' @param land_area_path Character scalar. Path to a rasterised Scotland
+#' land area mask used to constrain the output extent.
 #'
 #' @return A character scalar giving the path to the processed raster file.
 #' Intended for use with `targets` file targets (`format = "file"`).
@@ -229,9 +232,11 @@ process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution,
     fs::path(extract_dir, "peat_depth.tif")
   ) |> 
     standardise_ext(extent_list) |> 
-    standardise_res(resolution) |> 
     discretise_peat_depth() |> 
+    standardise_res(resolution, categorical = TRUE) |> 
     apply_land_area_mask(land_area_path)
+  
+  names(r) <- "peat_depth_class"
   
   output_path <- fs::path("data", "processed", "aitkenhead_19_pd_std.tif")
   
@@ -241,7 +246,7 @@ process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution,
     datatype = "INT1U",
     overwrite = TRUE,
     gdal = c(
-      "COMPRESS=None",
+      "COMPRESS=ZSTD",
       "TILED=YES"
     )
   )
@@ -252,43 +257,46 @@ process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution,
 #' Process the Gagkas and Lilly (2024) peat soil dataset
 #'
 #' Reads the source raster, converts peat soil presence values to a nominal
-#' peat depth of 50 cm and all other values to 0 cm, standardises the raster
-#' to a common spatial extent and resolution, categorises values using
-#' [discretise_peat_depth()], applies a land area mask using
-#' [apply_land_area_mask()] and writes the result to a GeoTIFF.
+#' peat depth class, standardises the raster to a common spatial extent and
+#' resolution, applies a Scotland land area mask, and writes the result to a
+#' GeoTIFF.
 #'
 #' Original resolution: 50 m.
 #'
-#' The output raster contains peat depth classes represented by the
-#' integers 0 to 6, where higher values correspond to greater peat depth.
-#' Cells outside the Scotland land area boundary are assigned `NA`.
+#' Source cells indicating peat soil presence (`1`) are assigned peat depth
+#' class `6`, while all other cells are assigned peat depth class `0`.
 #'
-#' The output is stored as an unsigned 8-bit integer raster with tiled
-#' storage.
+#' The output raster contains peat depth classes represented by integer
+#' values from 0 to 6, where higher values correspond to greater peat depth.
+#' Cells outside the Scotland land area boundary are assigned `NA`, and any
+#' missing values within the land area are replaced with `0`.
 #'
-#' @param source_path Path to the source raster file.
-#' @param extent_list A list defining the target spatial extent passed to
+#' The output is written as an unsigned 8-bit integer raster with ZSTD
+#' compression and tiled storage.
+#'
+#' @param source_path Character scalar. Path to the source raster file.
+#' @param extent_list List defining the target spatial extent passed to
 #' [standardise_ext()].
-#' @param resolution Target raster resolution passed to
+#' @param resolution Numeric scalar. Target raster resolution passed to
 #' [standardise_res()].
-#' @param land_area_path Character scalar. Path to the land area boundary
-#' dataset passed to [apply_land_area_mask()].
+#' @param land_area_path Character scalar. Path to a rasterised Scotland
+#' land area mask used to constrain the output extent.
 #'
 #' @return A character scalar giving the path to the processed raster file.
-#' Intended for use with `targets` file targets (`format = "file"`). 
+#' Intended for use with `targets` file targets (`format = "file"`).
 process_gagkas_24_psum_std <- function(source_path, extent_list, resolution,
                                        land_area_path) {
   
   r <- terra::rast(source_path) 
     
-  r <- terra::ifel(is.na(r), 0, 
-                   terra::ifel(r == 1, 50, 0))
+  r <- terra::ifel(r == 1, 6L, 0L)
   
   r <- r |> 
     standardise_ext(extent_list) |> 
-    standardise_res(resolution) |> 
-    discretise_peat_depth()  |> 
+    standardise_res(resolution, categorical = TRUE) |> 
     apply_land_area_mask(land_area_path)
+  
+  names(r) <- "peat_depth_class"
   
   output_path <- fs::path("data", "processed", "gagkas_24_psum_std.tif")
   
@@ -298,7 +306,7 @@ process_gagkas_24_psum_std <- function(source_path, extent_list, resolution,
     datatype = "INT1U",
     overwrite = TRUE,
     gdal = c(
-      "COMPRESS=None",
+      "COMPRESS=ZSTD",
       "TILED=YES"
     )
   )
@@ -306,29 +314,45 @@ process_gagkas_24_psum_std <- function(source_path, extent_list, resolution,
   output_path
 }
 
-#' Process the Robb et al., 2025 peat depth dataset
+#' Process the Robb et al. (2025) peat depth dataset
 #'
-#' Standardises to common extent and resolution, discretises peat depth values
-#' into categorical classes and writes the result to a compressed GeoTIFF.
-#' 
-#' Original resolution: 10 m
+#' Reads the source raster, standardises it to a common spatial extent and
+#' resolution, classifies peat depth values using
+#' [discretise_peat_depth()], applies a Scotland land area mask, and writes
+#' the result to a GeoTIFF.
 #'
-#' The output raster contains peat depth classes represented by the
-#' integers 0 to 6, where higher values correspond to greater peat depth.
+#' Original resolution: 10 m.
 #'
-#' The output is stored as an unsigned 8-bit integer raster with tiled storage.
+#' The output raster contains peat depth classes represented by integer
+#' values from 0 to 6, where higher values correspond to greater peat depth.
+#' Cells outside the Scotland land area boundary are assigned `NA`, and any
+#' missing values within the land area are replaced with `0`.
+#'
+#' The output is written as an unsigned 8-bit integer raster with ZSTD
+#' compression and tiled storage.
+#'
+#' @param source_path Character scalar. Path to the source raster file.
+#' @param extent_list List defining the target spatial extent passed to
+#' [standardise_ext()].
+#' @param resolution Numeric scalar. Target raster resolution passed to
+#' [standardise_res()].
+#' @param land_area_path Character scalar. Path to a rasterised Scotland
+#' land area mask used to constrain the output extent.
 #'
 #' @return A character scalar giving the path to the processed raster file.
 #' Intended for use with `targets` file targets (`format = "file"`).
 #'
-process_robb_25_pd <- function(source_path, extent_list, resolution) {
+process_robb_25_pd <- function(source_path, extent_list, resolution,
+                               land_area_path) {
   
   r <- terra::rast(
     source_path
   ) |> 
     standardise_ext(extent_list) |> 
-    standardise_res(resolution) |> 
-    discretise_peat_depth()
+    discretise_peat_depth() |> 
+    standardise_res(resolution, categorical = TRUE) |> 
+    apply_land_area_mask(land_area_path)
+
   
   output_path <- fs::path("data", "processed", "robb_25_pd_std.tif")
   
@@ -338,7 +362,7 @@ process_robb_25_pd <- function(source_path, extent_list, resolution) {
     datatype = "INT1U",
     overwrite = TRUE,
     gdal = c(
-      "COMPRESS=None",
+      "COMPRESS=ZSTD",
       "TILED=YES"
     )
   )
@@ -346,7 +370,7 @@ process_robb_25_pd <- function(source_path, extent_list, resolution) {
   output_path
 }
 
-#' Process Scotland land area boundary
+#' Process Scotland land area boundary - Mean High Water
 #'
 #' Extracts the Intermediate Zone 2022 boundary dataset, dissolves all
 #' boundaries into a single land area polygon, attaches standard boundary
@@ -371,11 +395,10 @@ process_land_area_bdry <- function(source_path){
   )
   
   v <- terra::aggregate(v)
+
+  v$boundary_key <- paste0("land_area",":::","mhw")
   
-  v$boundary_class <- "land area"
-  v$boundary_name <- "land area"
-  
-  v <- v[, c("boundary_class", "boundary_name")]
+  v <- v[, "boundary_key"]
   
   output_path <- fs::path("data", "processed", "land_area.gpkg")
   
@@ -388,11 +411,12 @@ process_land_area_bdry <- function(source_path){
   output_path
 }
 
+
 #' Process local authority boundary dataset
 #'
 #' Extracts the local authority boundary dataset from a ZIP archive,
 #' reads the boundary geometries, standardises the boundary attributes to
-#' a common schema (`boundary_class` and `boundary_name`), and writes the
+#' a common schema (`boundary_key`), and writes the
 #' result to a GeoPackage for use in downstream analyses.
 #'
 #' @param source_path Character vector containing the path to the downloaded
@@ -412,10 +436,9 @@ process_las_bdry <- function(source_path){
     fs::path(extract_dir, "pub_las.shp")
   )
   
-  v$boundary_class <- "local authority"
-  v$boundary_name <- v$local_auth
+  v$boundary_key <- paste0("local authority",":::",v$local_auth)
   
-  v <- v[, c("boundary_class", "boundary_name")]
+  v <- v[, "boundary_key"]
   
   output_path <- fs::path("data", "processed", "las.gpkg")
   
@@ -463,7 +486,13 @@ process_lcs_88_std <- function(source_path, extent_list, resolution){
   r_template <-terra::rast(x = extent_from_list(extent_list),
                            resolution = resolution)
   
-  output <- terra::rasterize(v, r_template, field = "DOMTEXT")
+  output <- terra::rasterize(v, r_template, field = "DOMTEXT",
+                             background = 255) # all NAs classd as mapping offset
+  
+  lev <- terra::levels(output)[[1]] |> 
+    rbind(list(255, "mapping offset"))
+  
+  levels(output) <- lev
   
   output_path <- fs::path("data", "processed", "lcs_88_std.tif")
   
@@ -471,8 +500,9 @@ process_lcs_88_std <- function(source_path, extent_list, resolution){
     output,
     filename = output_path,
     overwrite = TRUE,
+    datatype = "INT1U",
     gdal = c(
-      "COMPRESS=None",
+      "COMPRESS=LZW",
       "TILED=YES"
     )
   )
@@ -523,7 +553,7 @@ process_lca_std <- function(source_path, extent_list, resolution){
     filename = output_path,
     overwrite = TRUE,
     gdal = c(
-      "COMPRESS=None",
+      "COMPRESS=ZSTD",
       "TILED=YES"
     )
   )
@@ -569,7 +599,7 @@ process_ghgi_condition_std <- function(source_path, extent_list, resolution){
     filename = output_path,
     overwrite = TRUE,
     gdal = c(
-      "COMPRESS=None",
+      "COMPRESS=ZSTD",
       "TILED=YES"
     )
   )
@@ -577,33 +607,86 @@ process_ghgi_condition_std <- function(source_path, extent_list, resolution){
   output_path
 }
 
-#' Process GHGI peatland extent dataset
+#' Process the GHGI peatland extent dataset
 #'
 #' Reads the source vector dataset, assigns the British National Grid
-#' coordinate reference system, rasterises the peatland extent geometry onto
-#' a template raster defined by the supplied extent and resolution, applies a
-#' land area mask using [apply_land_area_mask()], and writes the result to a
-#' GeoTIFF.
+#' coordinate reference system, rasterises peatland extent onto a template
+#' raster defined by the supplied extent and resolution, applies a Scotland
+#' land area mask, and writes the result to a GeoTIFF.
 #'
 #' The output raster is a binary peatland extent layer. Cells whose centres
-#' fall within the source geometry are assigned the value `6`, matching the
-#' deepest peat class used elsewhere in the project. Cells outside the source
-#' geometry are assigned `0`. Cells outside the Scotland land area boundary
-#' are assigned `NA`.
+#' fall within the source peatland geometry are assigned peat depth class
+#' `6`, corresponding to the deepest peat class used elsewhere in the
+#' project. All other cells within the land area are assigned `0`.
+#'
+#' Cells outside the Scotland land area boundary are assigned `NA`, and any
+#' missing values within the land area are replaced with `0`.
+#'
+#' The output is written as an unsigned 8-bit integer raster with ZSTD
+#' compression and tiled storage.
 #'
 #' @param source_path Character scalar. Path to the source vector dataset.
-#' @param extent_list Named list defining the spatial extent of the output
-#'   raster.
-#' @param resolution Numeric. Output raster resolution in map units
-#'   (metres).
-#' @param land_area_path Character scalar. Path to the land area boundary
-#'   dataset passed to [apply_land_area_mask()].
+#' @param extent_list List defining the spatial extent of the output raster.
+#' @param resolution Numeric scalar. Output raster resolution in map units
+#' (metres).
+#' @param land_area_path Character scalar. Path to a rasterised Scotland
+#' land area mask used to constrain the output extent.
 #'
-#' @return A character scalar giving the path to the processed GeoTIFF
-#'   file. Intended for use with `targets` file targets (`format = "file"`).
-#'
+#' @return A character scalar giving the path to the processed raster file.
+#' Intended for use with `targets` file targets (`format = "file"`).
 process_ghgi_extent_std <- function(source_path, extent_list, resolution,
                                     land_area_path){
+  
+  v <- terra::vect(source_path)
+  v$peat_depth_class <- 6L
+  
+  terra::crs(v) <- "EPSG:27700"
+  
+  r_template <-terra::rast(x = extent_from_list(extent_list),
+                           resolution = resolution,
+                           crs = "EPSG:27700")
+  
+  output <- terra::rasterize(v, r_template, field = "peat_depth_class", background = 0L) |> 
+    apply_land_area_mask(land_area_path)
+  
+  names(output) <- "peat_depth_class"
+  
+  output_path <- fs::path("data", "processed", "ghgi_extent_std.tif")
+  
+  terra::writeRaster(
+    output,
+    filename = output_path,
+    overwrite = TRUE,
+    gdal = c(
+      "COMPRESS=ZSTD",
+      "TILED=YES"
+    )
+  )
+  
+  output_path
+}
+
+#' Rasterise a boundary dataset
+#'
+#' Reads a processed boundary GeoPackage, creates a raster template from the
+#' supplied extent and resolution, and rasterises the `boundary_key`
+#' attribute onto the target grid.
+#'
+#' The output raster is written as an unsigned 16-bit integer GeoTIFF with
+#' ZSTD compression and tiled storage. The output filename is derived from the
+#' input GeoPackage path by replacing the `.gpkg` suffix with `_rast.tif`.
+#'
+#' @param source_path Character scalar. Path to a processed boundary
+#' GeoPackage containing a `boundary_key` field.
+#' @param extent_list List defining the spatial extent of the output raster.
+#' @param resolution Numeric scalar. Output raster resolution in map units
+#' (metres).
+#'
+#' @return A character scalar giving the path to the rasterised boundary
+#' GeoTIFF. Intended for use with `targets` file targets
+#' (`format = "file"`).
+#'
+rasterize_boundary <- function(source_path, extent_list, resolution){
   
   v <- terra::vect(source_path)
   
@@ -613,20 +696,200 @@ process_ghgi_extent_std <- function(source_path, extent_list, resolution,
                            resolution = resolution,
                            crs = "EPSG:27700")
   
-  output <- terra::rasterize(v, r_template, field = 50, background = 0) |> 
-    discretise_peat_depth() |> 
-    apply_land_area_mask(land_area_path)
+  output <- terra::rasterize(v, r_template, field = "boundary_key")
   
-  output_path <- fs::path("data", "processed", "ghgi_extent_std.tif")
+  output_path <- stringr::str_replace(source_path, "\\.gpkg", "_rast.tif")
   
   terra::writeRaster(
     output,
     filename = output_path,
     overwrite = TRUE,
+    datatype = "INT2U",
     gdal = c(
-      "COMPRESS=None",
+      "COMPRESS=ZSTD",
       "TILED=YES"
     )
+  )
+  
+  output_path
+}
+
+#' Process Loch Lomond and the Trossachs National Park boundary
+#'
+#' Extracts the boundary dataset from a ZIP archive,
+#' reads the boundary geometries, standardises the boundary attributes to
+#' a common schema (`boundary_key`), and writes the
+#' result to a GeoPackage for use in downstream analyses.
+#'
+#' @param source_path Character vector containing the path to the downloaded
+#'   ZIP archive. The first element is assumed to be the archive containing
+#'   the boundary dataset.
+#'
+#' @return A character scalar giving the path to the processed GeoPackage
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_lltnp_bdry <- function(source_path){
+  
+  zip_file_path <- source_path[[1]]
+  
+  extract_dir <- unzip_to_temp(zip_file_path)
+  
+  v <- terra::vect(
+    fs::path(extract_dir, "SG_LochLomondTrossachsNationalPark_2002.shp")
+  )
+  
+  v$boundary_key <- paste0("national park", ":::", "lltnp")
+  
+  v <- v[, "boundary_key"]
+  
+  output_path <- fs::path("data", "processed", "lltnp.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+  
+  output_path
+}
+
+#' Process Cairngorms National Park boundary
+#'
+#' Extracts the boundary dataset from a ZIP archive,
+#' reads the boundary geometries, standardises the boundary attributes to
+#' a common schema (`boundary_class` and `boundary_name`), and writes the
+#' result to a GeoPackage for use in downstream analyses.
+#'
+#' @param source_path Character vector containing the path to the downloaded
+#'   ZIP archive. The first element is assumed to be the archive containing
+#'   the boundary dataset.
+#'
+#' @return A character scalar giving the path to the processed GeoPackage
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_cnp_bdry <- function(source_path){
+  
+  zip_file_path <- source_path[[1]]
+  
+  extract_dir <- unzip_to_temp(zip_file_path)
+  
+  v <- terra::vect(
+    fs::path(extract_dir, "SG_CairngormsNationalPark_2010.shp")
+  )
+  
+  v$boundary_key <- paste0("national park",":::","cnp")
+  
+  v <- v[, "boundary_key"]
+  
+  output_path <- fs::path("data", "processed", "cnp.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+  
+  output_path
+}
+
+#' Process Main River and Coastal catchment boundaries
+#'
+#' Extracts the boundary dataset from a ZIP archive,
+#' reads the boundary geometries, standardises the boundary attributes to
+#' a common schema (`boundary_class` and `boundary_name`), and writes the
+#' result to a GeoPackage for use in downstream analyses.
+#'
+#' @param source_path Character vector containing the path to the downloaded
+#'   ZIP archive. The first element is assumed to be the archive containing
+#'   the boundary dataset.
+#'
+#' @return A character scalar giving the path to the processed GeoPackage
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_catchments_bdry <- function(source_path){
+
+  zip_file_path <- source_path[[1]]
+
+  extract_dir <- unzip_to_temp(zip_file_path)
+
+  v <- terra::vect(
+    fs::path(extract_dir, "SEPA_CATCHMENTS_BNG.gpkg")
+  )
+
+  v$boundary_key <- paste0("catchment",":::",v$CATCHMENT)
+
+  v <- v[, "boundary_key"]
+
+  output_path <- fs::path("data", "processed", "catchments.gpkg")
+
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+
+  output_path
+}
+
+#' Process agricultural land boundary - (BPS claimed land and common grazings)
+#'
+#' Reads the boundary geometries, standardises the boundary attributes to
+#' a common schema (`boundary_key`), and writes the
+#' result to a GeoPackage for use in downstream analyses.
+#'
+#' @param source_path Character vector containing the path source file
+#' The first element is assumed to be the archive containing
+#'   the boundary dataset.
+#'
+#' @return A character scalar giving the path to the processed GeoPackage
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_agri_bdry <- function(source_path){
+  
+  v <- terra::vect(source_path)
+  
+  v$boundary_key <- paste0("agricultural land",":::",v$class)
+  
+  v <- v[, "boundary_key"]
+  
+  output_path <- fs::path("data", "processed", "agri.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+  
+  output_path
+}
+
+#' Process public land boundary
+#'
+#' Reads the boundary geometries, standardises the boundary attributes to
+#' a common schema (`boundary_key`), and writes the
+#' result to a GeoPackage for use in downstream analyses.
+#'
+#' @param source_path Character vector containing the path source file
+#' The first element is assumed to be the archive containing
+#'   the boundary dataset.
+#'
+#' @return A character scalar giving the path to the processed GeoPackage
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+process_public_land_bdry <- function(source_path){
+  
+  v <- terra::vect(source_path)
+  
+  v$boundary_key <- paste0("public land",":::","public land")
+  
+  v <- v[, "boundary_key"]
+  
+  output_path <- fs::path("data", "processed", "public_land.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
   )
   
   output_path

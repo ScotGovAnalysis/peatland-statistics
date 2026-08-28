@@ -41,9 +41,9 @@ if (global_config$crew$use_crew) {
   )
 }
 
+# tar_source("other_functions.R") # Source other scripts as needed.
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
-# tar_source("other_functions.R") # Source other scripts as needed.
 
 # Replace the target list below with your own:
 
@@ -112,23 +112,19 @@ list(
   # Processing ----
   
   processed_targets,
+  
+  boundary_rast_processing_targets,
 
   tar_target_raw(
     name = "extent_targets",
-    command = extent_targets_expr
+    command = extent_targets_expr,
+    iteration = "list"
   ),
 
   tar_target_raw(
-    name = "boundary_targets",
-    command = boundary_targets_expr
-  ),
-
-  tar_target(
-    extent_boundary_combinations,
-    tidyr::crossing(
-      extent_path = extent_targets,
-      boundary_path = boundary_targets
-    )
+    name = "boundary_rast_targets",
+    command = boundary_rast_targets_expr,
+    iteration = "list"
   ),
 
   # Analysis ----
@@ -136,39 +132,24 @@ list(
   agreement_target,
 
   tar_target(
-    extent_analysis,
-    summarise_extent_inexact(
-      extent_path = extent_boundary_combinations$extent_path,
-      boundary_path = extent_boundary_combinations$boundary_path
-    ),
-    pattern = map(extent_boundary_combinations)
-  ),
-
-  tar_target(
-    extent_analysis_combined,
-    dplyr::bind_rows(extent_analysis)
-  ),
-  
-  tar_target(
     unclipped_basemap,
     create_unclipped_basemap(lcs_88_std, lca_std, lcs_88_condition_lookup),
     format = "file"
   ),
   
   tar_target(
-    condition_analysis,
-    summarise_condition_inexact(
-      extent_path = extent_boundary_combinations$extent_path,
-      boundary_path = extent_boundary_combinations$boundary_path,
+    baseline_condition_analysis,
+    summarise_condition_crosstab(
+      extent_path = extent_targets,
+      boundary_path = boundary_rast_targets,
       condition_path = unclipped_basemap
     ),
-    pattern = map(extent_boundary_combinations)
+    pattern = cross(extent_targets, boundary_rast_targets)
   ),
   
   tar_target(
-    condition_analysis_combined,
-    dplyr::bind_rows(condition_analysis)
+    baseline_condition_analysis_combined,
+    dplyr::bind_rows(baseline_condition_analysis)
   )
-  
-  
+
 )
