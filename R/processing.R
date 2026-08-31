@@ -342,7 +342,7 @@ process_gagkas_24_psum_std <- function(source_path, extent_list, resolution,
 #' @return A character scalar giving the path to the processed raster file.
 #' Intended for use with `targets` file targets (`format = "file"`).
 #'
-process_robb_25_pd <- function(source_path, extent_list, resolution,
+process_robb_25_pd_std <- function(source_path, extent_list, resolution,
                                land_area_path) {
   
   r <- terra::rast(
@@ -353,6 +353,7 @@ process_robb_25_pd <- function(source_path, extent_list, resolution,
     standardise_res(resolution, categorical = TRUE) |> 
     apply_land_area_mask(land_area_path)
 
+  names(r) <- "peat_depth_class"
   
   output_path <- fs::path("data", "processed", "robb_25_pd_std.tif")
   
@@ -890,6 +891,49 @@ process_public_land_bdry <- function(source_path){
     v,
     filename = output_path,
     overwrite = TRUE
+  )
+  
+  output_path
+}
+
+process_hex_grid_10km <- function(source_path){
+  
+  sf::sf_use_s2(FALSE)
+  
+  land_area <- sf::st_read(source_path) |>
+    sf::st_union()
+  
+  hex_grid <- sf::st_make_grid(
+    land_area,
+    square = FALSE,
+    cellsize = 10000
+  ) |>
+    sf::st_sf()
+  
+  hex_grid <- hex_grid[
+    lengths(sf::st_intersects(hex_grid, land_area)) > 0,
+  ]
+  
+  hex_grid_masked <- sf::st_intersection(
+    hex_grid,
+    land_area
+  )
+  
+  hex_grid_masked$boundary_key <- paste0(
+    "hex_grid_10km",
+    ":::",
+     seq_len(nrow(hex_grid_masked)))
+  
+  output_path <- fs::path(
+    "data",
+    "processed",
+    "hex_10.gpkg"
+  )
+  
+  sf::write_sf(
+    hex_grid_masked,
+    output_path,
+    delete_dsn = TRUE
   )
   
   output_path

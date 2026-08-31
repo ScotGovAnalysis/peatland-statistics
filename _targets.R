@@ -123,6 +123,12 @@ list(
   processed_targets,
   
   boundary_rast_processing_targets,
+  
+  tar_target(
+    hex_grid_10km,
+    process_hex_grid_10km(land_area_bdry),
+    format = "file"
+  ),
 
   tar_target_raw(
     name = "extent_targets",
