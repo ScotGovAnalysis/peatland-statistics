@@ -77,6 +77,8 @@ renv/python/
 renv/sandbox/
 renv/staging/
 
+# untracked
+private/
 
 #### OS files ----------------------------------------------------------
 .DS_Store
