@@ -257,6 +257,24 @@ verify_dataset <- function(input_dataset_name, filename) {
   path
 }
 
+#' Download a dataset from an ArcGIS Online API source
+#'
+#' Looks up a dataset in the public data catalogue and downloads it using
+#' [`download_arcgol_api_and_metadata()`]. The catalogue must contain exactly
+#' one matching entry for the requested dataset.
+#'
+#' @param input_dataset_name Character scalar. Name of the dataset to download.
+#' @param public_data_catalogue Data frame containing dataset download
+#' parameters and metadata locations.
+#'
+#' @return Named character vector of successfully downloaded file paths.
+#'
+#' @details
+#' The function validates that the dataset exists in the catalogue and that
+#' only a single matching record is present. The corresponding catalogue row
+#' is converted to a list and supplied to
+#' [`download_arcgol_api_and_metadata()`].
+#'
 download_arcgol_api_dataset <- function(
     input_dataset_name,
     public_data_catalogue){
@@ -293,6 +311,38 @@ download_arcgol_api_dataset <- function(
   
 }
 
+#' Download an ArcGIS Online dataset and associated metadata
+#'
+#' Downloads a dataset from an ArcGIS Online service using
+#' `arcgislayers::arc_read()` and saves it to a dataset-specific folder under
+#' `data/raw/`.
+#'
+#' The output format depends on `dataset_extension`:
+#' * `"api_non_spat"`: saved as an `.rds` file.
+#' * `"api_vect"`: saved as a GeoPackage (`.gpkg`).
+#' * `"api_rast"`: saved as a GeoTIFF (`.tif`).
+#'
+#' Metadata is downloaded separately using
+#' [`download_metadata()`], where available.
+#'
+#' @param dataset Character scalar. Dataset name used to create output folders
+#' and filenames.
+#' @param data_location Character scalar. ArcGIS service URL used as the data
+#' source.
+#' @param dataset_extension Character scalar. Indicator of the dataset type.
+#' Supported values are `"api_non_spat"`, `"api_vect"`, and `"api_rast"`.
+#' @param metadata_location Character scalar. URL of the metadata file to
+#' download. May be `NA` or an empty string if no metadata is available.
+#' @param metadata_extension Character scalar. Metadata file extension, e.g.
+#' `".xml"` or `".html"`.
+#'
+#' @return Named character vector of successfully downloaded file paths.
+#'
+#' @details
+#' Non-spatial datasets are saved as serialized R objects (`.rds`), vector
+#' datasets are converted to `terra` vectors and written as GeoPackages, and
+#' raster datasets are written as GeoTIFF files.
+#'
 download_arcgol_api_and_metadata <- function(
     dataset,
     data_location,
