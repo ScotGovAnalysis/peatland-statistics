@@ -126,7 +126,17 @@ processed_targets <- purrr::pmap(
                ),
              ),
              format = "file"
-           )
+           ),
+           # restoration
+           restoration = targets::tar_target_raw(
+             name = processed_dataset_name,
+             command = substitute(
+               PROCESSOR(
+                 source_path = SOURCE
+               ),
+             ),
+             format = "file"
+           ),
     )
   }
 )

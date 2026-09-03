@@ -27,7 +27,8 @@ tar_option_set(
     "sf",
     "exactextractr",
     "httr2",
-    "fs"
+    "fs",
+    "stringr"
   ),
 
 )
@@ -165,6 +166,64 @@ list(
   tar_target(
     baseline_condition_analysis_combined,
     dplyr::bind_rows(baseline_condition_analysis)
+  ),
+  
+  tar_target(
+    pa_spatial_data_availability,
+    categorise_pa_by_spatial_data_availability(
+      input_pa_non_spatial[[1]],
+      pa_footprints_std,
+      pa_centroids_std
+    )
+  ),
+  
+  tar_target(
+    land_area,
+    sf::read_sf(land_area_bdry)
+  ),
+  
+  tar_target(
+    centroids_to_buffer,
+    pa_spatial_data_availability |>
+    filter(spat_data_class == "centroids only") |> 
+    select(grant_id, total_ha_restored) |>
+    distinct() |>
+    left_join(pa_centroids_std |> sf::st_read()) |> 
+    filter(total_ha_restored > 0)
+  ),
+  
+  tar_target(
+    buffered_centroids,
+    centroids_to_buffer |> 
+      mutate(geom = create_footprint(
+        geom = centroids_to_buffer$geom,
+        target_ha = centroids_to_buffer$total_ha_restored,
+        clip_geom = land_area
+      )) |> sf::st_as_sf(),
+    pattern = map(centroids_to_buffer)
+  ),
+  
+  tar_target(
+    buffered_centroids_combined,
+    dplyr::bind_rows(buffered_centroids) |> 
+      left_join(pa_spatial_data_availability)
+  ),
+  
+  tar_target(
+    footprints_formatted,
+    format_footprints(
+        pa_spatial_data_availability,
+        pa_footprints_std,
+        land_area)
+  ),
+  
+  tar_target(
+    combined_pa_dataset,
+    create_combined_pa_dataset(
+      pa_spatial_data_availability,
+      footprints_formatted,
+      buffered_centroids_combined),
+    format = "file"
   )
 
 )

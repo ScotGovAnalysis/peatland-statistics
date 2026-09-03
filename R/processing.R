@@ -938,3 +938,35 @@ process_hex_grid_10km <- function(source_path){
   
   output_path
 }
+
+
+pa_processing_helper <- function(source_path, output_filename){
+  
+  output_path <- fs::path(
+    "data",
+    "processed",
+    output_filename
+  )
+  
+  sf::st_read(source_path) |> 
+    st_make_valid() |> 
+    select(GRANT_ID) |> 
+    rename("grant_id" = "GRANT_ID") |> 
+    group_by(grant_id) |> 
+    summarise(
+      geom = sf::st_union(geom)
+    ) |> 
+    ungroup() |> 
+    sf::write_sf(output_path,
+                 delete_dsn = TRUE)
+  
+  output_path
+}
+
+process_pa_centroids_std <- function(source_path){
+  pa_processing_helper(source_path[[1]], "pa_centroids_std.gpkg")
+}
+
+process_pa_footprints_std <- function(source_path){
+  pa_processing_helper(source_path[[1]], "pa_footprints_std.gpkg")
+}
