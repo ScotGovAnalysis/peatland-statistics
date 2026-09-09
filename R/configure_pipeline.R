@@ -137,6 +137,17 @@ processed_targets <- purrr::pmap(
              ),
              format = "file"
            ),
+           # rewetting
+           rewetting = targets::tar_target_raw(
+             name = processed_dataset_name,
+             command = substitute(
+               PROCESSOR(
+                 source_path = SOURCE,
+                 land_area = land_area
+               ),
+             ),
+             format = "file"
+           )
     )
   }
 )
@@ -214,4 +225,36 @@ boundary_rast_targets_expr <- tibble::enframe(
   lapply(as.name) |>
   (\(x) as.call(c(as.name("c"), x)))()
 
+boundary_vect_targets_expr <- tibble::enframe(
+  global_config$processed_datasets,
+  name = "processed_dataset_name",
+  value = "metadata"
+) |>
+  tidyr::unnest_wider(metadata) |>
+  dplyr::filter(type %in% c("boundary", "data_vis_boundary")) |>
+  dplyr::filter(processed_dataset_name != "land_area_bdry") |> 
+  dplyr::pull(processed_dataset_name) |>
+  lapply(as.name) |>
+  (\(x) as.call(c(as.name("c"), x)))()
 
+# Restoration ----
+
+rewetting_input_expr <- as.call(
+  c(
+    as.name("c"),
+    lapply(
+      global_config$combined_rewetting_dataset$input_datasets,
+      as.name
+    )
+  )
+)
+
+combined_rewetting_target <- targets::tar_target_raw(
+  name = "combined_rewetting_dataset",
+  command = bquote(
+    create_combined_rewetting_dataset(
+      input_paths = .(rewetting_input_expr)
+    )
+  ),
+  format = "file"
+)

@@ -184,3 +184,148 @@ create_combined_pa_dataset <- function(spat_data_avail_df,
   output_path
   
 }
+
+create_combined_rewetting_dataset <- function(input_paths) {
+  
+  output_path <- fs::path(
+    "data",
+    "processed",
+    "combined_rewetting_dataset.gpkg"
+  )
+  
+  data <- purrr::map(
+    input_paths,
+    \(x) {
+      sf::st_read(x, quiet = TRUE) |>
+        mutate(
+          site_id = as.character(site_id)
+        )
+    }
+  ) |>
+    dplyr::bind_rows() |> 
+    mutate(area_correction_factor = replace_na(area_correction_factor, 1))
+  
+  sf::write_sf(data, output_path, delete_dsn = TRUE)
+  
+  output_path
+}
+
+summarise_rewetting_by_boundary <- function(
+    rewetting,
+    boundary_path
+){
+  
+  sf::sf_use_s2(FALSE)
+  
+  boundary <- sf::st_read(boundary_path, quiet = TRUE) |>
+    dplyr::select(boundary_key)
+  
+  rewetting <- rewetting |>
+    dplyr::select(source, year, area_correction_factor)
+  
+  hits <- sf::st_intersects(
+    rewetting,
+    boundary
+  )
+  
+  rewetting <- rewetting[
+    lengths(hits) > 0,
+  ]
+  
+  sf::st_intersection(
+    rewetting,
+    boundary
+  ) |>
+    dplyr::mutate(
+      area_ha =
+        as.numeric(sf::st_area(geom)) / 10000 * area_correction_factor
+    ) |>
+    sf::st_drop_geometry() |>
+    dplyr::group_by(
+      boundary_key,
+      source,
+      year
+    ) |>
+    dplyr::summarise(
+      area_ha = sum(area_ha),
+      .groups = "drop"
+    ) |>
+    tidyr::separate_wider_delim(
+      boundary_key,
+      delim = ":::",
+      names = c("boundary_class", "boundary_name"),
+      cols_remove = FALSE
+    )
+}
+
+summarise_rewetting_land_area <- function(rewetting) {
+  
+  rewetting |>
+    sf::st_drop_geometry() |>
+    mutate(area_ha = area_ha * area_correction_factor) |> 
+    dplyr::group_by(
+      source,
+      year
+    ) |>
+    dplyr::summarise(
+      area_ha = sum(area_ha),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      boundary_class = "land_area",
+      boundary_name = "mhw",
+      boundary_key = "land_area:::mhw",
+      .before = source
+    )
+}
+
+summarise_pa_by_boundary <- function(
+    pa,
+    boundary_path
+){
+  
+  boundary <- sf::st_read(boundary_path, quiet = TRUE) |>
+    dplyr::select(boundary_key)
+  
+  pa <- pa |>
+    dplyr::select(
+      financial_year_end,
+      delivery_partner,
+      spat_data_class,
+      qa_area_match,
+      overlap_5_perc,
+      frac_restored_in_year,
+      area_correction_factor
+    ) |>
+    sf::st_crop(sf::st_bbox(boundary))
+  
+  sf::st_intersection(
+    pa,
+    boundary
+  ) |>
+    dplyr::mutate(
+      area_ha =
+        (as.numeric(sf::st_area(geom)) / 10000) *
+        area_correction_factor *
+        frac_restored_in_year
+    ) |>
+    sf::st_drop_geometry() |>
+    dplyr::group_by(
+      boundary_key,
+      financial_year_end,
+      delivery_partner,
+      spat_data_class,
+      qa_area_match,
+      overlap_5_perc
+    ) |>
+    dplyr::summarise(
+      area_ha = sum(area_ha),
+      .groups = "drop"
+    ) |>
+    tidyr::separate_wider_delim(
+      boundary_key,
+      delim = ":::",
+      names = c("boundary_class", "boundary_name")
+    )
+  
+}

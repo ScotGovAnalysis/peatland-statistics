@@ -1021,3 +1021,96 @@ process_pa_centroids_std <- function(source_path){
 process_pa_footprints_std <- function(source_path){
   pa_processing_helper(source_path[[1]], "pa_footprints_std.gpkg")
 }
+
+process_pa_ghgi_2024_std <- function(source_path, land_area){
+  output_path <- fs::path(
+    "data",
+    "processed",
+    "pa_ghgi_2024_std.gpkg"
+  )
+  
+  sf::st_read(source_path) |> 
+    rename(year = financial_year_end) |> 
+    filter(year < 2025,
+           grant_id != "500764") |> 
+    st_make_valid() |> 
+    mutate(area_ha = (st_area(geom) |> as.numeric()) / 10000) |> 
+    sf::st_crop(land_area) |> 
+    mutate(cropped_area_ha = (st_area(geom) |> as.numeric()) / 10000,
+           area_correction_factor = area_ha / cropped_area_ha,
+           source = "Peatland ACTION GHGI submission 2024") |> 
+    rename(site_id = grant_id) |> 
+    select(site_id, source, year, area_ha, area_correction_factor) |> 
+    sf::write_sf(output_path,
+                 delete_dsn = TRUE)
+  
+  output_path
+}
+
+process_evans_2017_std <- function(source_path, land_area){
+  
+  output_path <- fs::path(
+    "data",
+    "processed",
+    "evans_2017.gpkg"
+  )
+  
+  data <- openxlsx::read.xlsx(source_path, sep.names = "_") |> 
+    select(`Project_Area_(ha)`,
+           `BNG_Easting_/_Northing`,
+           ID) |> 
+    rename(area_ha = `Project_Area_(ha)`,
+           bng_en = `BNG_Easting_/_Northing`,
+           site_id = ID) |> 
+    filter(!is.na(bng_en)) |> 
+    separate(
+      bng_en,
+      into = c("Easting", "Northing"),
+      sep = ","
+    ) |> 
+    mutate(
+      Easting = as.numeric(trimws(Easting)),
+      Northing = as.numeric(trimws(Northing))
+    ) |> 
+    st_as_sf(coords = c("Easting", "Northing"), crs = 27700) |> 
+    rowwise() |> 
+    mutate(geometry = create_footprint(
+      geom = geometry,
+      target_ha = area_ha,
+      clip_geom = land_area
+    ),
+    year = 2000, # arbitrary 
+    source = "Evans et al., 2017") |> 
+    select(site_id, source, year, area_ha) |> 
+    sf::st_as_sf() |> 
+    sf::write_sf(output_path,
+                 delete_dsn = TRUE)
+  
+  output_path
+  
+}
+
+process_ukceh_extr_rest_std <- function(source_path, land_area){
+  output_path <- fs::path(
+    "data",
+    "processed",
+    "ukceh_extr_rest_std.gpkg"
+  )
+  
+  sf::st_read(source_path) |> 
+    st_make_valid() |> 
+    mutate(area_ha = (st_area(geom) |> as.numeric()) / 10000) |> 
+    sf::st_crop(land_area) |> 
+    mutate(cropped_area_ha = (st_area(geom) |> as.numeric()) / 10000,
+           area_correction_factor = area_ha / cropped_area_ha,
+           source = "UKCEH Peat Extraction Database",
+           year = 2000) |> # arbitrary 
+    rename("site_id" = Name) |> 
+    select(site_id, source, year, area_ha, area_correction_factor) |> 
+    sf::write_sf(output_path,
+                 delete_dsn = TRUE)
+  
+  output_path
+  
+}
+

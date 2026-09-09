@@ -148,6 +148,12 @@ list(
     command = boundary_rast_targets_expr,
     iteration = "list"
   ),
+  
+  tar_target_raw(
+    name = "boundary_vect_targets",
+    command = boundary_vect_targets_expr,
+    iteration = "list"
+  ),
 
   # Analysis ----
 
@@ -210,13 +216,13 @@ list(
   ),
   
   tar_target(
-    buffered_centroids_combined,
+    pa_buffered_centroids_combined,
     dplyr::bind_rows(buffered_centroids) |> 
       left_join(pa_spatial_data_availability)
   ),
   
   tar_target(
-    footprints_formatted,
+    pa_footprints_formatted,
     format_footprints(
         pa_spatial_data_availability,
         pa_footprints_std,
@@ -227,9 +233,52 @@ list(
     combined_pa_dataset,
     create_combined_pa_dataset(
       pa_spatial_data_availability,
-      footprints_formatted,
-      buffered_centroids_combined),
+      pa_footprints_formatted,
+      pa_buffered_centroids_combined),
     format = "file"
+  ),
+  
+  combined_rewetting_target,
+  
+  tar_target(
+    rewetting_sf,
+    sf::st_read(combined_rewetting_dataset) 
+  ),
+  
+  tar_target(
+    rewetting_by_boundary,
+    summarise_rewetting_by_boundary(
+      rewetting_sf,
+      boundary_vect_targets
+    ),
+    pattern = map(boundary_vect_targets)
+  ),
+  
+  tar_target(
+    rewetting_land_area,
+    summarise_rewetting_land_area(
+      rewetting_sf
+    )
+  ),
+  
+  tar_target(
+    rewetting_summary_dataset,
+    dplyr::bind_rows(rewetting_by_boundary,
+                     rewetting_land_area)
+  ),
+  
+  tar_target(
+    pa_sf,
+    sf::st_read(combined_pa_dataset, quiet = TRUE)
+  ),
+  
+  tar_target(
+    pa_by_boundary,
+    summarise_pa_by_boundary(
+      pa = pa_sf,
+      boundary_path = boundary_vect_targets
+    ),
+    pattern = map(boundary_vect_targets)
   )
 
 )
