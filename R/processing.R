@@ -10,23 +10,6 @@
 #
 # Input datasets should be specified in config/config.yml .
 
-# terra options ----------------------------------------------------------------
-
-#' Set global terra options
-#'
-#' Configures memory management options for the current R session using
-#' `terra::terraOptions()`.
-#'
-#' @param terra_options A named list containing terra configuration options.
-#' Must contain elements `memfrac` and `memmax`.
-#'
-#' @return Invisibly returns NULL
-set_terra_options <- function(terra_options) {
-  terra::terraOptions(memfrac = terra_options$memfrac,
-                      memmax = terra_options$memmax)
-  invisible(NULL)
-}
-
 
 # spatial helper functions -----------------------------------------------------
 
@@ -195,7 +178,7 @@ apply_land_area_mask <- function(extent_raster, land_area_path){
 
 # spatial dataset processing ---------------------------------------------------
 
-#' Process the Aitkenhead (2019) peat depth dataset
+#' Process the Aitkenhead and Coull (2020) peat depth dataset
 #'
 #' Extracts the source raster from a ZIP archive, standardises it to a
 #' common spatial extent and resolution, classifies peat depth values using
@@ -223,7 +206,7 @@ apply_land_area_mask <- function(extent_raster, land_area_path){
 #'
 #' @return A character scalar giving the path to the processed raster file.
 #' Intended for use with `targets` file targets (`format = "file"`).
-process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution,
+process_aitkenhead_20_pd_std <- function(source_path, extent_list, resolution,
                                          land_area_path){
   
   extract_dir <- unzip_to_temp(source_path)
@@ -238,7 +221,7 @@ process_aitkenhead_19_pd_std <- function(source_path, extent_list, resolution,
   
   names(r) <- "peat_depth_class"
   
-  output_path <- fs::path("data", "processed", "aitkenhead_19_pd_std.tif")
+  output_path <- fs::path("data", "processed", "aitkenhead_20_pd_std.tif")
   
   terra::writeRaster(
     r,
@@ -361,6 +344,49 @@ process_robb_25_pd_std <- function(source_path, extent_list, resolution,
     r,
     filename = output_path,
     datatype = "INT1U",
+    overwrite = TRUE,
+    gdal = c(
+      "COMPRESS=ZSTD",
+      "TILED=YES"
+    )
+  )
+  
+  output_path
+}
+
+process_nat_soil_map_std <- function(source_path, extent_list, resolution,
+                                                                     land_area_path){
+  
+  extract_dir <- unzip_to_temp(source_path[[1]])
+  
+  v <- sf::st_read(
+    fs::path(extract_dir,"Hutton_Soils_250K_v1.4", "qmsoils_UCSS_v1_3.shp")
+  ) |> 
+    select(MSSG84_1) |> 
+    mutate(
+      peat_depth_class = case_when(
+        str_detect(MSSG84_1, regex("\\bpeaty\\b", ignore_case = TRUE)) ~ 1L,
+        str_detect(MSSG84_1, regex("\\bpeat\\b", ignore_case = TRUE)) ~ 6L,
+        TRUE ~ 0L
+      ),
+      .keep = "unused"
+    ) |> 
+    terra::vect()
+  
+  r_template <- terra::rast(x = extent_from_list(extent_list),
+                           resolution = resolution,
+                           crs = "EPSG:27700")
+  
+  output <- terra::rasterize(v, r_template, field = "peat_depth_class", background = 0L) |> 
+    apply_land_area_mask(land_area_path)
+  
+  names(output) <- "peat_depth_class"
+  
+  output_path <- fs::path("data", "processed", "nat_soil_map_std.tif")
+  
+  terra::writeRaster(
+    output,
+    filename = output_path,
     overwrite = TRUE,
     gdal = c(
       "COMPRESS=ZSTD",
@@ -896,38 +922,50 @@ process_public_land_bdry <- function(source_path){
   output_path
 }
 
-process_hex_grid_10km <- function(source_path){
+make_hex_grid <- function(land_area_path,
+                          cell_size,
+                          output_name){
   
   sf::sf_use_s2(FALSE)
   
-  land_area <- sf::st_read(source_path) |>
-    sf::st_union()
+  land_area <- sf::st_read(land_area_path)
   
   hex_grid <- sf::st_make_grid(
     land_area,
     square = FALSE,
-    cellsize = 10000
+    cellsize = cell_size,
   ) |>
     sf::st_sf()
   
-  hex_grid <- hex_grid[
-    lengths(sf::st_intersects(hex_grid, land_area)) > 0,
-  ]
+  # Hexagons completely within land area
+  inside <- lengths(
+    sf::st_within(hex_grid, land_area)
+  ) > 0
   
-  hex_grid_masked <- sf::st_intersection(
-    hex_grid,
+  hex_inside <- hex_grid[inside, ]
+  
+  # Only these need clipping
+  hex_boundary <- hex_grid[!inside, ]
+  
+  hex_boundary <- sf::st_intersection(
+    hex_boundary,
     land_area
   )
   
+  hex_grid_masked <- dplyr::bind_rows(
+    hex_inside,
+    hex_boundary
+  )
+  
   hex_grid_masked$boundary_key <- paste0(
-    "hex_grid_10km",
+    output_name,
     ":::",
-     seq_len(nrow(hex_grid_masked)))
+    seq_len(nrow(hex_grid_masked)))
   
   output_path <- fs::path(
     "data",
     "processed",
-    "hex_10.gpkg"
+    paste0(output_name, ".gpkg")
   )
   
   sf::write_sf(
@@ -938,6 +976,19 @@ process_hex_grid_10km <- function(source_path){
   
   output_path
 }
+
+process_hex_grid_10km <- function(source_path){
+  make_hex_grid(source_path,
+                10000,
+                "hex_grid_10km")
+}
+
+process_hex_grid_5km <- function(source_path){
+  make_hex_grid(source_path,
+                5000,
+                "hex_grid_5km")
+}
+ 
 
 
 pa_processing_helper <- function(source_path, output_filename){

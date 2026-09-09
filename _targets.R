@@ -130,6 +130,12 @@ list(
     process_hex_grid_10km(land_area_bdry),
     format = "file"
   ),
+  
+  tar_target(
+    hex_grid_5km,
+    process_hex_grid_5km(land_area_bdry),
+    format = "file"
+  ),
 
   tar_target_raw(
     name = "extent_targets",
