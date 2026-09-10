@@ -101,7 +101,7 @@ processed_targets <- purrr::pmap(
                  extent_list = common_extent,
                  resolution = common_resolution,
                  land_area_path = land_area_bdry_rast
-               ),
+               )
              ),
              format = "file"
            ),
@@ -111,7 +111,28 @@ processed_targets <- purrr::pmap(
              command = substitute(
                PROCESSOR(
                  source_path = SOURCE
-               ),
+               )
+             ),
+             format = "file"
+           ),
+           # catchment boundary
+           catchment_boundary = targets::tar_target_raw(
+             name = processed_dataset_name,
+             command = substitute(
+               PROCESSOR(
+                 source_path = SOURCE,
+                 land_area = land_area
+               )
+             ),
+             format = "file"
+           ),
+           # data_vis_boundary boundary
+           data_vis_boundary = targets::tar_target_raw(
+             name = processed_dataset_name,
+             command = substitute(
+               PROCESSOR(
+                 land_area = land_area
+               )
              ),
              format = "file"
            ),
@@ -123,7 +144,7 @@ processed_targets <- purrr::pmap(
                  source_path = SOURCE,
                  extent_list = common_extent,
                  resolution = common_resolution
-               ),
+               )
              ),
              format = "file"
            ),
@@ -133,7 +154,7 @@ processed_targets <- purrr::pmap(
              command = substitute(
                PROCESSOR(
                  source_path = SOURCE
-               ),
+               )
              ),
              format = "file"
            ),
@@ -144,7 +165,7 @@ processed_targets <- purrr::pmap(
                PROCESSOR(
                  source_path = SOURCE,
                  land_area = land_area
-               ),
+               )
              ),
              format = "file"
            )
@@ -153,7 +174,7 @@ processed_targets <- purrr::pmap(
 )
 
 rast_boundary_values <- processed_target_values |> 
-  dplyr::filter(type %in% c("boundary", "data_vis_boundary")) |> 
+  dplyr::filter(type %in% c("boundary", "data_vis_boundary", "catchment_boundary")) |> 
   dplyr::select(-source_dataset)
 
 boundary_rast_processing_targets <- purrr::pmap(
@@ -208,6 +229,7 @@ extent_targets_expr <- tibble::enframe(
 ) |>
   tidyr::unnest_wider(metadata) |>
   dplyr::filter(type == "extent") |>
+  dplyr::filter(processed_dataset_name != "nat_soil_map_std") |> 
   dplyr::pull(processed_dataset_name) |>
   lapply(as.name) |>
   (\(x) as.call(c(as.name("c"), x)))()
@@ -219,7 +241,7 @@ boundary_rast_targets_expr <- tibble::enframe(
   value = "metadata"
 ) |>
   tidyr::unnest_wider(metadata) |>
-  dplyr::filter(type %in% c("boundary", "data_vis_boundary")) |>
+  dplyr::filter(type %in% c("boundary", "data_vis_boundary", "catchment_boundary")) |>
   dplyr::pull(processed_dataset_name) |>
   paste0("_rast") |> 
   lapply(as.name) |>
@@ -231,7 +253,7 @@ boundary_vect_targets_expr <- tibble::enframe(
   value = "metadata"
 ) |>
   tidyr::unnest_wider(metadata) |>
-  dplyr::filter(type %in% c("boundary", "data_vis_boundary")) |>
+  dplyr::filter(type %in% c("boundary", "data_vis_boundary", "catchment_boundary")) |>
   dplyr::filter(processed_dataset_name != "land_area_bdry") |> 
   dplyr::pull(processed_dataset_name) |>
   lapply(as.name) |>
