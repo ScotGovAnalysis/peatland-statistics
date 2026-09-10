@@ -1,4 +1,46 @@
-
+#' Categorise Peatland ACTION records by spatial data availability
+#'
+#' Combines non-spatial Peatland ACTION restoration records with available
+#' footprint and centroid datasets to determine the level of spatial
+#' information available for each grant.
+#'
+#' Records are classified into one of three spatial data categories:
+#'
+#' * `"footprint"` - a restoration footprint polygon is available.
+#' * `"centroids only"` - a site centroid is available but no footprint.
+#' * `"none"` - no spatial representation is available.
+#'
+#' The function also aggregates restoration area by grant and financial year,
+#' calculates the total restored area associated with each grant, and derives
+#' the proportion of each grant's restoration delivered in each year.
+#'
+#' To improve matching between datasets, grant identifiers of the form
+#' `"5xxxxx[a-z]"` are harmonised where the corresponding base identifier
+#' exists in the centroid dataset (for example, `"500963a"` is matched to
+#' `"500963"`).
+#'
+#' The output contains the following additional variables:
+#'
+#' * `spat_data_class` - Spatial data availability category.
+#' * `total_ha_restored` - Total restored area associated with the grant.
+#' * `frac_restored_in_year` - Proportion of the total restoration area
+#'   delivered in the given financial year.
+#'
+#' @param pa_non_spatial_path Character scalar. Path to the non-spatial
+#'   Peatland ACTION dataset stored as an RDS file.
+#' @param pa_footprints_path Character scalar. Path to the Peatland ACTION
+#'   footprint dataset.
+#' @param pa_centroids_path Character scalar. Path to the Peatland ACTION
+#'   centroid dataset.
+#'
+#' @return A tibble containing non-spatial restoration records enriched with
+#' spatial data availability classifications and derived area metrics.
+#'
+#' @details
+#' Restoration area is aggregated to the grant-year level before spatial data
+#' availability is assigned. The resulting dataset forms the basis for
+#' subsequent creation of spatial restoration datasets and temporal allocation
+#' of restoration activity.
 categorise_pa_by_spatial_data_availability <- function(
     pa_non_spatial_path,
     pa_footprints_path,
@@ -47,6 +89,42 @@ categorise_pa_by_spatial_data_availability <- function(
     select(-footprint, -centroids)
     
 }
+
+#' Create an area-constrained footprint from point geometry
+#'
+#' Creates a footprint polygon around one or more point locations by buffering
+#' the input geometry to achieve a target area. Where the resulting footprint
+#' extends beyond a clipping geometry, the footprint is cropped and the buffer
+#' radius is iteratively adjusted so that the final clipped footprint matches
+#' the requested area as closely as possible.
+#'
+#' The function is intended for situations where only point locations and a
+#' target area are available. This is used, for example, to create approximate
+#' restoration footprints from site centroids and reported restoration areas.
+#'
+#' For multipoint geometries, the target area is distributed across all points
+#' by applying a common buffer radius to each component point.
+#'
+#' @param geom An `sf` geometry object containing one or more point
+#'   geometries.
+#' @param target_ha Numeric scalar giving the desired footprint area in
+#'   hectares.
+#' @param clip_geom An `sf` polygon object defining the area within which the
+#'   footprint must be contained.
+#'
+#' @return An `sf` geometry object representing the generated footprint
+#' polygon.
+#'
+#' @details
+#' The footprint area is matched to the requested area using
+#' [stats::uniroot()] to identify the buffer radius that minimises the
+#' difference between the footprint area and the target area. Where clipping
+#' is required, area calculations are performed on the clipped geometry rather
+#' than the unconstrained buffer.
+#'
+#' To improve performance, clipping operations are restricted to a subset of
+#' the clipping geometry intersecting a bounding box around the maximum
+#' possible buffer extent.
 
 create_footprint <- function(
     geom,
@@ -119,6 +197,59 @@ create_footprint <- function(
   footprint
 }
 
+#' Format and quality-assure Peatland ACTION footprint data
+#'
+#' Reads Peatland ACTION footprint geometries, joins them to restoration
+#' records classified as having footprint-based spatial data, derives quality
+#' assurance metrics, assesses overlap between footprint polygons, crops
+#' footprints to the Scotland land area boundary, and calculates area
+#' correction factors for downstream analyses.
+#'
+#' The function compares the mapped footprint area with the reported restored
+#' area for each grant and flags records where the two measures are deemed to
+#' agree. Agreement is defined as either:
+#'
+#' * An absolute area difference of no more than 1 hectare; or
+#' * A relative area difference of no more than 2%.
+#'
+#' The function also identifies overlapping footprints and records whether at
+#' least 5% of a footprint's area is covered by another restoration footprint.
+#'
+#' After quality assurance checks, footprints are cropped to the Scotland land
+#' area boundary and an area correction factor is calculated to preserve the
+#' reported restoration area in downstream spatial summaries.
+#'
+#' The output includes the following derived variables:
+#'
+#' * `geom_ha` - Area of the input footprint geometry in hectares.
+#' * `area_diff_ha` - Difference between mapped and reported restoration area.
+#' * `area_diff_pct` - Relative difference between mapped and reported area.
+#' * `qa_area_match` - Indicator of acceptable agreement between mapped and
+#'   reported area.
+#' * `max_overlap_ha` - Maximum overlap area with another footprint.
+#' * `prop_covered` - Proportion of footprint area overlapped by another
+#'   footprint.
+#' * `overlap_5_perc` - Indicator for footprints with at least 5% overlap.
+#' * `cropped_area_ha` - Footprint area after cropping to land area.
+#' * `area_correction_factor` - Ratio of reported restoration area to cropped
+#'   footprint area.
+#'
+#' @param spat_data_avail_df Tibble produced by
+#'   [categorise_pa_by_spatial_data_availability()] containing restoration
+#'   records and spatial data classifications.
+#' @param pa_footprints_path Character scalar. Path to the Peatland ACTION
+#'   footprint dataset.
+#' @param land_area An `sf` polygon object defining the Scotland land area
+#'   boundary used for cropping.
+#'
+#' @return An `sf` object containing footprint geometries together with
+#' restoration attributes and quality-assurance metrics.
+#'
+#' @details
+#' Footprint overlap statistics are intended as data quality indicators and do
+#' not alter the geometries themselves. The resulting dataset is subsequently
+#' combined with centroid-derived and non-spatial restoration records to create
+#' a unified restoration dataset for analysis.
 format_footprints <- function(
   spat_data_avail_df,
   pa_footprints_path,
@@ -160,6 +291,47 @@ format_footprints <- function(
   
 }
 
+#' Create a combined Peatland ACTION restoration dataset
+#'
+#' Combines all Peatland ACTION restoration records into a single dataset,
+#' incorporating footprint-based records, centroid-derived footprints, and
+#' records with no spatial representation. The resulting dataset provides a
+#' unified source for downstream restoration analyses.
+#'
+#' Records derived from centroids are assigned an
+#' `area_correction_factor` of 1 because their generated footprints are
+#' constructed to match the reported restoration area. Records without
+#' spatial data are retained with missing geometry and are included so that
+#' non-spatial restoration activity can be represented in aggregate summaries.
+#'
+#' Missing values in key allocation variables are replaced with defaults:
+#'
+#' * `frac_restored_in_year` defaults to 0.
+#' * `area_correction_factor` defaults to 1.
+#'
+#' The combined dataset is written to a GeoPackage for use in subsequent
+#' spatial and temporal restoration analyses.
+#'
+#' @param spat_data_avail_df Tibble produced by
+#'   [categorise_pa_by_spatial_data_availability()] containing restoration
+#'   records and spatial data classifications.
+#' @param pa_footprints An `sf` object containing validated restoration
+#'   footprint geometries and associated attributes.
+#' @param pa_centroids An `sf` object containing footprints generated from
+#'   restoration centroids and associated attributes.
+#'
+#' @return A character scalar giving the path to the output GeoPackage file.
+#' Intended for use with `targets` file targets (`format = "file"`).
+#'
+#' @details
+#' The output contains three classes of restoration record:
+#'
+#' * Grants with mapped restoration footprints.
+#' * Grants represented by centroid-derived footprints.
+#' * Grants with no available spatial representation.
+#'
+#' Together, these provide the complete Peatland ACTION restoration dataset
+#' used throughout the analytical pipeline.
 create_combined_pa_dataset <- function(spat_data_avail_df,
                                        pa_footprints, 
                                        pa_centroids){
@@ -185,6 +357,32 @@ create_combined_pa_dataset <- function(spat_data_avail_df,
   
 }
 
+#' Combine rewetting datasets into a unified spatial dataset
+#'
+#' Reads multiple processed rewetting datasets, harmonises key fields,
+#' combines them into a single spatial dataset, and writes the result to a
+#' GeoPackage for downstream analysis.
+#'
+#' The function ensures that site identifiers are stored consistently as
+#' character values across all input datasets before concatenation. Missing
+#' values of `area_correction_factor` are replaced with `1`, indicating that
+#' no area adjustment is required.
+#'
+#' The resulting dataset provides a single source of rewetting activity from
+#' multiple input datasets and is used in subsequent spatial summarisation and
+#' condition time series analyses.
+#'
+#' @param input_paths Character vector of file paths to processed rewetting
+#'   datasets. Each dataset must be readable by [sf::st_read()] and conform to
+#'   the expected schema.
+#'
+#' @return A character scalar giving the path to the output GeoPackage file.
+#' Intended for use with `targets` file targets (`format = "file"`).
+#'
+#' @details
+#' All input datasets are combined using [dplyr::bind_rows()]. The output is
+#' written to `data/processed/combined_rewetting_dataset.gpkg` and serves as
+#' the canonical rewetting dataset for downstream analyses.
 create_combined_rewetting_dataset <- function(input_paths) {
   
   output_path <- fs::path(
@@ -210,6 +408,40 @@ create_combined_rewetting_dataset <- function(input_paths) {
   output_path
 }
 
+#' Summarise rewetting activity by boundary geography
+#'
+#' Intersects rewetting polygons with a boundary dataset and calculates the
+#' area of rewetting occurring within each boundary unit. Rewetting areas are
+#' adjusted using any supplied area correction factors and aggregated by
+#' boundary, source dataset, and year.
+#'
+#' To improve performance, rewetting features that do not intersect the
+#' boundary dataset are removed prior to the spatial intersection operation.
+#'
+#' The output contains one row per boundary, source, and year combination,
+#' together with the total rewetting area allocated to that boundary.
+#'
+#' @param rewetting An `sf` object containing rewetting geometries and the
+#'   variables `source`, `year`, and `area_correction_factor`.
+#' @param boundary_path Character scalar. Path to a boundary dataset readable
+#'   by [sf::st_read()]. The dataset must contain a `boundary_key` field in
+#'   the format `"boundary_class:::boundary_name"`.
+#'
+#' @return A tibble containing:
+#'
+#' * `boundary_key` - Unique boundary identifier.
+#' * `boundary_class` - Boundary geography type.
+#' * `boundary_name` - Boundary name.
+#' * `source` - Rewetting data source.
+#' * `year` - Year associated with the rewetting activity.
+#' * `area_ha` - Total rewetting area (hectares) within the boundary.
+#'
+#' @details
+#' Areas are calculated from the intersected geometries and multiplied by
+#' `area_correction_factor` to account for any adjustments applied during
+#' preprocessing. The function uses planar geometry operations
+#' (`sf_use_s2(FALSE)`) to ensure compatibility with the British National Grid
+#' projection used throughout the pipeline.
 summarise_rewetting_by_boundary <- function(
     rewetting,
     boundary_path
@@ -258,6 +490,40 @@ summarise_rewetting_by_boundary <- function(
     )
 }
 
+#' Summarise rewetting activity for the Scotland land area
+#'
+#' Produces national-level summaries of rewetting activity by combining
+#' spatially explicit rewetting datasets with additional non-spatial
+#' rewetting records and aggregating areas by source and year.
+#'
+#' Rewetting areas are adjusted using any available
+#' `area_correction_factor` values prior to aggregation. Non-spatial records
+#' are assumed to require no adjustment and are assigned an
+#' `area_correction_factor` of 1.
+#'
+#' The output is structured to be consistent with boundary-level rewetting
+#' summaries, using a synthetic boundary representing the Scotland land area
+#' (`land_area:::mhw`).
+#'
+#' @param rewetting_sf An `sf` object containing rewetting records, including
+#'   the variables `source`, `year`, `area_ha`, and
+#'   `area_correction_factor`.
+#' @param non_spatial_path Character scalar. Path to an Excel workbook
+#'   containing additional non-spatial rewetting records.
+#'
+#' @return A tibble containing:
+#'
+#' * `boundary_key` - Boundary identifier (`"land_area:::mhw"`).
+#' * `boundary_class` - Boundary class (`"land_area"`).
+#' * `boundary_name` - Boundary name (`"mhw"`).
+#' * `source` - Rewetting data source.
+#' * `year` - Year associated with the rewetting activity.
+#' * `area_ha` - Total rewetting area (hectares).
+#'
+#' @details
+#' This function provides a Scotland-wide summary equivalent to the outputs
+#' generated by [summarise_rewetting_by_boundary()], allowing national totals
+#' to be analysed alongside summaries for other boundary geographies.
 summarise_rewetting_land_area <- function(rewetting_sf, non_spatial_path) {
   
   rewetting_sf |>
@@ -283,6 +549,49 @@ summarise_rewetting_land_area <- function(rewetting_sf, non_spatial_path) {
     )
 }
 
+#' Summarise Peatland ACTION restoration by boundary geography
+#'
+#' Intersects Peatland ACTION restoration footprints with a boundary dataset
+#' and calculates restored area within each boundary unit. Restoration areas
+#' are adjusted using both spatial area correction factors and the proportion
+#' of each grant allocated to a given financial year before aggregation.
+#'
+#' The output contains one row per combination of boundary, financial year,
+#' delivery partner, spatial data availability class, and quality assurance
+#' status, together with the total restored area assigned to that group.
+#'
+#' To improve performance, restoration geometries are first cropped to the
+#' bounding box of the boundary dataset before spatial intersection.
+#'
+#' @param pa An `sf` object containing Peatland ACTION restoration geometries
+#'   and associated attributes, including `financial_year_end`,
+#'   `delivery_partner`, `spat_data_class`, `qa_area_match`,
+#'   `overlap_5_perc`, `frac_restored_in_year`, and
+#'   `area_correction_factor`.
+#' @param boundary_path Character scalar. Path to a boundary dataset readable
+#'   by [sf::st_read()]. The dataset must contain a `boundary_key` field in
+#'   the format `"boundary_class:::boundary_name"`.
+#'
+#' @return A tibble containing:
+#'
+#' * `boundary_class` - Boundary geography type.
+#' * `boundary_name` - Boundary name.
+#' * `boundary_key` - Unique boundary identifier.
+#' * `financial_year_end` - Financial year of restoration activity.
+#' * `delivery_partner` - Delivery partner associated with the restoration.
+#' * `spat_data_class` - Spatial data availability classification.
+#' * `qa_area_match` - Indicator of agreement between mapped and reported
+#'   restoration area.
+#' * `overlap_5_perc` - Indicator of substantial overlap with another
+#'   restoration footprint.
+#' * `area_ha` - Total restored area (hectares) within the boundary.
+#'
+#' @details
+#' Areas are calculated from the intersected geometries and multiplied by both
+#' `area_correction_factor` and `frac_restored_in_year`. This allows restored
+#' area to be correctly allocated where footprint geometries have been cropped
+#' and where restoration activity associated with a single grant spans
+#' multiple financial years.
 summarise_pa_by_boundary <- function(
     pa,
     boundary_path
@@ -334,6 +643,47 @@ summarise_pa_by_boundary <- function(
   
 }
 
+#' Summarise Peatland ACTION restoration for the Scotland land area
+#'
+#' Produces Scotland-wide summaries of Peatland ACTION restoration activity by
+#' aggregating restoration areas across all records, irrespective of spatial
+#' location. Restoration areas are allocated to financial years using the
+#' proportion of each grant delivered in each year.
+#'
+#' The output is structured to be consistent with the boundary-level summaries
+#' produced by [summarise_pa_by_boundary()], using a synthetic boundary
+#' representing the Scotland land area (`land_area:::mhw`).
+#'
+#' The output contains one row per combination of financial year, delivery
+#' partner, spatial data availability class, and quality assurance status,
+#' together with the corresponding restored area.
+#'
+#' @param pa An `sf` object containing Peatland ACTION restoration records and
+#'   associated attributes, including `financial_year_end`,
+#'   `delivery_partner`, `spat_data_class`, `qa_area_match`,
+#'   `overlap_5_perc`, `frac_restored_in_year`, and
+#'   `total_ha_restored`.
+#'
+#' @return A tibble containing:
+#'
+#' * `boundary_class` - Boundary class (`"land_area"`).
+#' * `boundary_name` - Boundary name (`"mhw"`).
+#' * `boundary_key` - Boundary identifier (`"land_area:::mhw"`).
+#' * `financial_year_end` - Financial year of restoration activity.
+#' * `delivery_partner` - Delivery partner associated with the restoration.
+#' * `spat_data_class` - Spatial data availability classification.
+#' * `qa_area_match` - Indicator of agreement between mapped and reported
+#'   restoration area.
+#' * `overlap_5_perc` - Indicator of substantial overlap with another
+#'   restoration footprint.
+#' * `area_ha` - Total restored area (hectares).
+#'
+#' @details
+#' Restored area is calculated as `total_ha_restored *
+#' frac_restored_in_year`, allowing grants that span multiple financial years
+#' to be allocated proportionately through time. The resulting output provides
+#' national totals that can be analysed alongside summaries for other boundary
+#' geographies.
 summarise_pa_land_area <- function(
     pa
 ){

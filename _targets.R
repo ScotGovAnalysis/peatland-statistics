@@ -46,10 +46,11 @@ if (global_config$crew$use_crew) {
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
 
-# Replace the target list below with your own:
-
-# Simple targets are defined in the list below - more complex targets are defined
-# in configure_pipeline.R
+# Pipeline definition.
+#
+# This file defines the high-level analytical workflow and target
+# dependencies. Repeated and dynamically generated targets are created in
+# configure_pipeline.R to keep the main pipeline concise and maintainable.
 
 list(
   
@@ -125,6 +126,8 @@ list(
   
   boundary_rast_processing_targets,
 
+  # Collections of dynamically generated targets used for downstream
+  # branching analyses.
   tar_target_raw(
     name = "extent_targets",
     command = extent_targets_expr,
@@ -153,6 +156,8 @@ list(
     format = "file"
   ),
   
+  # Summarise peat condition for every combination of peat extent dataset and
+  # boundary geography using dynamic cross-branching.
   tar_target(
     baseline_condition_analysis,
     summarise_condition_crosstab(
@@ -168,6 +173,12 @@ list(
     dplyr::bind_rows(baseline_condition_analysis) |> 
       apply_condition_assumptions()
   ),
+  
+  # Peatland ACTION restoration workflow.
+  #
+  # Restoration records are classified by spatial data availability,
+  # footprint geometries are created where required, and restoration areas
+  # are summarised by boundary geography and nationally.
   
   tar_target(
     pa_spatial_data_availability,
@@ -254,6 +265,11 @@ list(
                      pa_by_boundary)
   ),
   
+  # Rewetting workflow.
+  #
+  # Rewetting datasets are combined, summarised by geography, and used to
+  # derive a simplified peat condition time series.
+  
   combined_rewetting_target,
   
   tar_target(
@@ -283,6 +299,9 @@ list(
     dplyr::bind_rows(rewetting_by_boundary,
                      rewetting_land_area)
   ),
+  
+  # Simplified condition trajectory assuming cumulative rewetting reduces
+  # degraded peatland area over time.
   
   tar_target(
     simplified_condition_time_series_dataset,

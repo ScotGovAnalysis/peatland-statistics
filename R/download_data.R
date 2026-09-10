@@ -5,6 +5,19 @@
 # The URLs for datasets and associated metadata should be specified in the file
 # "public_input_data_catalogue.csv" in the config folder.
 
+#' Validate public data catalogue entries
+#'
+#' Checks that all datasets configured for download from public sources
+#' (`download` and `arcgol_api`) are present in the public data catalogue.
+#' The function is intended as an early pipeline validation step and
+#' raises an error if any configured datasets are missing.
+#'
+#' @param config Configuration list read from `config.yml`.
+#' @param public_data_catalogue Tibble of catalogue entries.
+#'
+#' @return `TRUE` if validation succeeds.
+#'
+#' @seealso [download_dataset()]
 validate_public_data_catalogue_datasets <- function(config, public_data_catalogue) {
   
   config_datasets <- tibble::enframe(
@@ -13,7 +26,7 @@ validate_public_data_catalogue_datasets <- function(config, public_data_catalogu
     value = "metadata"
   ) |>
     tidyr::unnest_wider(metadata) |> 
-    filter(fun %in% c("download", "argol_api")) |> 
+    filter(fun %in% c("download", "arcgol_api")) |> 
     pull(input_dataset_name)
   
   catalogue_datasets <- public_data_catalogue$dataset
@@ -33,7 +46,22 @@ validate_public_data_catalogue_datasets <- function(config, public_data_catalogu
   TRUE
 }
 
-
+#' Download a dataset defined in the public data catalogue
+#'
+#' Looks up a dataset in the public data catalogue and downloads the
+#' dataset together with any associated metadata using
+#' [download_dataset_and_metadata()].
+#'
+#' The catalogue must contain exactly one matching entry for the
+#' requested dataset. An error is raised if no match is found or if
+#' multiple matches are present.
+#'
+#' @param input_dataset_name Character scalar giving the dataset name
+#' specified in the pipeline configuration.
+#' @param public_data_catalogue Tibble containing dataset download
+#' parameters and metadata locations.
+#'
+#' @return Named character vector of downloaded file paths.
 download_dataset <- function(
     input_dataset_name,
     public_data_catalogue){

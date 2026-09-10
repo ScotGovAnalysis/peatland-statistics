@@ -83,6 +83,17 @@ processed_target_values <- tibble::enframe(
 ) |>
   tidyr::unnest_wider(metadata)
 
+# Dynamically construct processing targets from the configuration file.
+#
+# Each entry in config$processed_datasets specifies:
+# - the processed dataset name,
+# - the source dataset,
+# - the processing type.
+#
+# The processing type determines which arguments are passed to the
+# corresponding process_*() function. Targets are generated programmatically
+# using tar_target_raw() to avoid manually defining a target for every
+# dataset, i.e., static branching.
 processed_targets <- purrr::pmap(
   processed_target_values,
   function(processed_dataset_name, source_dataset, type) {
@@ -177,6 +188,12 @@ rast_boundary_values <- processed_target_values |>
   dplyr::filter(type %in% c("boundary", "data_vis_boundary", "catchment_boundary")) |> 
   dplyr::select(-source_dataset)
 
+# Create rasterised versions of all boundary datasets.
+#
+# Many analyses use raster cross-tabulation rather than vector intersection.
+# Boundary datasets are therefore converted to a common raster grid after
+# processing.
+
 boundary_rast_processing_targets <- purrr::pmap(
   rast_boundary_values,
   function(processed_dataset_name, type) {
@@ -220,8 +237,19 @@ agreement_target <- targets::tar_target_raw(
 )
 
 
-# Extent ----
 
+
+# Extent ----
+# Construct expressions containing all processed extent datasets.
+#
+# These expressions are used by tar_target_raw() in _targets.R to create
+# static branches over groups of datasets defined in the configuration file.
+#
+# The resulting expression has the form:
+#   c(dataset_a, dataset_b, dataset_c)
+#
+# allowing targets to iterate over all configured datasets without requiring
+# manual updates when new datasets are added.
 extent_targets_expr <- tibble::enframe(
   global_config$processed_datasets,
   name = "processed_dataset_name",
@@ -234,7 +262,7 @@ extent_targets_expr <- tibble::enframe(
   lapply(as.name) |>
   (\(x) as.call(c(as.name("c"), x)))()
 
-
+# Construct expressions containing all raster boundary datasets.
 boundary_rast_targets_expr <- tibble::enframe(
   global_config$processed_datasets,
   name = "processed_dataset_name",
@@ -247,6 +275,7 @@ boundary_rast_targets_expr <- tibble::enframe(
   lapply(as.name) |>
   (\(x) as.call(c(as.name("c"), x)))()
 
+# Construct expressions containing all vector boundary datasets.
 boundary_vect_targets_expr <- tibble::enframe(
   global_config$processed_datasets,
   name = "processed_dataset_name",
