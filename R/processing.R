@@ -365,7 +365,7 @@ process_nat_soil_map_std <- function(source_path, extent_list, resolution,
     select(MSSG84_1) |> 
     mutate(
       peat_depth_class = case_when(
-        str_detect(MSSG84_1, regex("\\bpeaty\\b", ignore_case = TRUE)) ~ 1L,
+        str_detect(MSSG84_1, regex("\\bpeaty\\b", ignore_case = TRUE)) ~ 2L,
         str_detect(MSSG84_1, regex("\\bpeat\\b", ignore_case = TRUE)) ~ 6L,
         TRUE ~ 0L
       ),
@@ -819,41 +819,47 @@ process_cnp_bdry <- function(source_path){
   output_path
 }
 
-#' Process Main River and Coastal catchment boundaries
+#' Process main river and coastal catchment boundaries
 #'
-#' Extracts the boundary dataset from a ZIP archive,
-#' reads the boundary geometries, standardises the boundary attributes to
-#' a common schema (`boundary_class` and `boundary_name`), and writes the
-#' result to a GeoPackage for use in downstream analyses.
+#' Reads the SEPA main river and coastal catchment dataset, retains
+#' catchments with an area of at least 100 km² after cropping to the supplied
+#'  land area, and standardises identifiers by creating a
+#' `boundary_key` field. The processed boundaries are written to a
+#' GeoPackage for use in downstream analyses.
 #'
-#' @param source_path Character vector containing the path to the downloaded
-#'   ZIP archive. The first element is assumed to be the archive containing
-#'   the boundary dataset.
+#' @param source_path Character scalar giving the path or URL of the source
+#' catchment dataset.
+#' @param land_area An `sf` polygon object defining the area to which the
+#' catchment boundaries should be cropped.
 #'
 #' @return A character scalar giving the path to the processed GeoPackage
-#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#' file. Intended for use with `targets` file targets (`format = "file"`).
 #'
-process_catchments_bdry <- function(source_path){
+#' @details
+#' The output contains only main river and coastal catchments in Scotland with
+#' a surface area of at least 100 km^2.
+#' A unique boundary identifier is created in the form:
+#'
+#' `catchment:::<catchment_number> - <catchment_name>`
+#'
+#' where `<catchment_number>` is the SEPA catchment identifier and
+#' `<catchment_name>` is the published catchment name.
+#'
+process_catchments_bdry <- function(source_path, land_area){
 
-  zip_file_path <- source_path[[1]]
-
-  extract_dir <- unzip_to_temp(zip_file_path)
-
-  v <- terra::vect(
-    fs::path(extract_dir, "SEPA_CATCHMENTS_BNG.gpkg")
-  )
-
-  v$boundary_key <- paste0("catchment",":::",v$CATCHMENT)
-
-  v <- v[, "boundary_key"]
+  sf::sf_use_s2(FALSE)
+   
+  v <- sf::st_read(source_path[[1]]) |> 
+    mutate(boundary_key = paste0("catchment",":::",gi02_catchno," - ",catchment_name)) |> 
+    sf::st_crop(land_area) |> 
+    filter(as.numeric(st_area(geom)) >= (100*1000*1000)) |> # 100 km2
+    select(boundary_key) 
 
   output_path <- fs::path("data", "processed", "catchments.gpkg")
 
-  terra::writeVector(
-    v,
-    filename = output_path,
-    overwrite = TRUE
-  )
+  sf::write_sf(v,
+               output_path,
+               delete_layer = TRUE)
 
   output_path
 }
@@ -922,13 +928,11 @@ process_public_land_bdry <- function(source_path){
   output_path
 }
 
-make_hex_grid <- function(land_area_path,
+make_hex_grid <- function(land_area,
                           cell_size,
                           output_name){
   
   sf::sf_use_s2(FALSE)
-  
-  land_area <- sf::st_read(land_area_path)
   
   hex_grid <- sf::st_make_grid(
     land_area,
@@ -977,14 +981,14 @@ make_hex_grid <- function(land_area_path,
   output_path
 }
 
-process_hex_grid_10km <- function(source_path){
-  make_hex_grid(source_path,
+process_hex_grid_10km <- function(land_area){
+  make_hex_grid(land_area,
                 10000,
                 "hex_grid_10km")
 }
 
-process_hex_grid_5km <- function(source_path){
-  make_hex_grid(source_path,
+process_hex_grid_5km <- function(land_area){
+  make_hex_grid(land_area,
                 5000,
                 "hex_grid_5km")
 }
@@ -1112,5 +1116,51 @@ process_ukceh_extr_rest_std <- function(source_path, land_area){
   
   output_path
   
+}
+
+# write outputs ####
+
+write_output_datasets <- function(
+    rewetting_summary_dataset,
+    restoration_summary_dataset,
+    baseline_condition_summary_dataset,
+    simplified_condition_time_series_dataset
+) {
+  
+  output_dir <- fs::path("data", "outputs")
+  
+  fs::dir_create(output_dir)
+  
+  rewetting_file <- fs::path(
+    output_dir,
+    "rewetting_summary_dataset.rds"
+  )
+  
+  restoration_file <- fs::path(
+    output_dir,
+    "restoration_summary_dataset.rds"
+  )
+  
+  baseline_file <- fs::path(
+    output_dir,
+    "baseline_condition_summary_dataset.rds"
+  )
+  
+  timeseries_file <- fs::path(
+    output_dir,
+    "simplified_condition_time_series_dataset.rds"
+  )
+  
+  saveRDS(rewetting_summary_dataset, rewetting_file)
+  saveRDS(restoration_summary_dataset, restoration_file)
+  saveRDS(baseline_condition_summary_dataset, baseline_file)
+  saveRDS(simplified_condition_time_series_dataset, timeseries_file)
+  
+  c(
+    rewetting_file,
+    restoration_file,
+    baseline_file,
+    timeseries_file
+  )
 }
 
