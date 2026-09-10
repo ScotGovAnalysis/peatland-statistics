@@ -195,33 +195,139 @@ summarise_condition_crosstab <- function(extent_path, boundary_path, condition_p
 
   output <- output |>
     mutate(
-      "pd_50" = class_6,
-      "pd_40" = class_6 + class_5,
-      "pd_30" = class_6 + class_5 + class_4
+      peat_soil_50 = class_6,
+      peat_soil_40 = class_6 + class_5,
+      peat_soil_30 = class_6 + class_5 + class_4,
+      peaty_soil = class_2 + class_3 + class_4 + class_5,
+      peatland = peat_soil_50 + peaty_soil
     ) |>
-    group_by(boundary_name) |> 
-    mutate(total_pd_50 = sum(pd_50),
-           total_pd_40 = sum(pd_40),
-           total_pd_30 = sum(pd_30)) |> 
-    ungroup() |> 
     pivot_longer(
-      cols = c(pd_50, pd_40, pd_30),
-      names_to = "depth_class",
+      cols = c(peat_soil_50, peat_soil_40, peat_soil_30, peaty_soil, peatland),
+      names_to = "peat_depth_class",
       values_to = "area_ha"
     ) |>
+    group_by(boundary_name, peat_depth_class) |>
+    mutate(
+      peat_extent_ha = sum(area_ha)
+    ) |>
+    ungroup() |>
     select(
       boundary_key,
       boundary_class,
       boundary_name,
       extent_source,
-      depth_class,
+      peat_depth_class,
+      peat_extent_ha,
       condition,
       area_ha,
-      total_pd_50,
-      total_pd_40,
-      total_pd_30,
       land_area_ha
     )
 
   output
+}
+
+
+
+apply_condition_assumptions <- function(condition_df) {
+  
+  harmonised <- condition_df |>
+    mutate(
+      condition = case_when(
+        condition == "modified bog (lca uplands correction)" ~ "modified bog",
+        condition == "saltmarsh" ~ "near natural bog",
+        condition == "mapping offset" ~ "near natural bog",
+        condition == "other" ~ "near natural bog",
+        TRUE ~ condition
+      )
+    )
+  
+  eroded_split <- harmonised |>
+    filter(condition == "eroded") |>
+    mutate(
+      `modified bog - drained` = area_ha * 0.85 * 0.275,
+      `modified bog - undrained` = area_ha * 0.85 * 0.725,
+      `eroding bog - drained` = area_ha * 0.15 * 0.275,
+      `eroding bog - undrained` = area_ha * 0.15 * 0.725
+    ) |>
+    select(-area_ha, -condition) |>
+    pivot_longer(
+      cols = c(
+        `modified bog - drained`,
+        `modified bog - undrained`,
+        `eroding bog - drained`,
+        `eroding bog - undrained`
+      ),
+      names_to = "condition",
+      values_to = "area_ha"
+    )
+  
+  mod_bog_split <- harmonised |>
+    filter(condition == "modified bog") |>
+    mutate(
+      `modified bog - drained` = area_ha * 0.275,
+      `modified bog - undrained` = area_ha * 0.725
+    ) |>
+    select(-area_ha, -condition) |>
+    pivot_longer(
+      cols = c(
+        `modified bog - drained`,
+        `modified bog - undrained`
+      ),
+      names_to = "condition",
+      values_to = "area_ha"
+    )
+  
+  harmonised |>
+    filter(!condition %in% c("modified bog", "eroded")) |>
+    bind_rows(eroded_split, mod_bog_split) |>
+    group_by(
+      boundary_key,
+      boundary_class,
+      boundary_name,
+      extent_source,
+      peat_depth_class,
+      land_area_ha,
+      condition
+    ) |>
+    summarise(
+      area_ha = sum(area_ha),
+      peat_extent_ha = first(peat_extent_ha),
+      .groups = "drop"
+    )
+}
+
+create_simple_condition_ts <- function(condition_df,
+                                       rewetting_df){
+  
+  a <- condition_df |> 
+    filter(condition == "near natural bog") |> 
+    rename("near natural" = area_ha) |> 
+    mutate(degraded = peat_extent_ha - `near natural`) |> 
+    select(-condition)
+  
+  b <- rewetting_df |>
+    select(-source) |>
+    rename(rewetted = area_ha) |>
+    group_by(boundary_key, year) |>
+    summarise(rewetted = sum(rewetted), .groups = "drop") |>
+    bind_rows(
+      rewetting_df |>
+        distinct(boundary_key) |>
+        mutate(
+          year = 1990,
+          rewetted = 0
+        )
+    ) |>
+    group_by(boundary_key, year) |>
+    summarise(rewetted = sum(rewetted), .groups = "drop") |>
+    arrange(boundary_key, year) |>
+    group_by(boundary_key) |>
+    mutate(rewetted = cumsum(rewetted)) |>
+    ungroup()
+  
+  full_join(a, b,
+            by = c("boundary_key"),
+            relationship = "many-to-many") |> 
+    mutate(degraded = degraded - rewetted)
+  
 }
