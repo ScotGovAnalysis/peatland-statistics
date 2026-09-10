@@ -29,7 +29,7 @@ tar_option_set(
     "httr2",
     "fs",
     "stringr"
-  ),
+  )
 
 )
 
@@ -124,18 +124,6 @@ list(
   processed_targets,
   
   boundary_rast_processing_targets,
-  
-  tar_target(
-    hex_grid_10km,
-    process_hex_grid_10km(land_area_bdry),
-    format = "file"
-  ),
-  
-  tar_target(
-    hex_grid_5km,
-    process_hex_grid_5km(land_area_bdry),
-    format = "file"
-  ),
 
   tar_target_raw(
     name = "extent_targets",
@@ -176,8 +164,9 @@ list(
   ),
   
   tar_target(
-    baseline_condition_analysis_combined,
-    dplyr::bind_rows(baseline_condition_analysis)
+    baseline_condition_summary_dataset,
+    dplyr::bind_rows(baseline_condition_analysis) |> 
+      apply_condition_assumptions()
   ),
   
   tar_target(
@@ -238,6 +227,33 @@ list(
     format = "file"
   ),
   
+  tar_target(
+    pa_sf,
+    sf::st_read(combined_pa_dataset, quiet = TRUE)
+  ),
+  
+  tar_target(
+    pa_by_boundary,
+    summarise_pa_by_boundary(
+      pa = pa_sf,
+      boundary_path = boundary_vect_targets
+    ),
+    pattern = map(boundary_vect_targets)
+  ),
+  
+  tar_target(
+    pa_land_area,
+    summarise_pa_land_area(
+      pa = pa_sf
+    )
+  ),
+  
+  tar_target(
+    restoration_summary_dataset,
+    dplyr::bind_rows(pa_land_area,
+                     pa_by_boundary)
+  ),
+  
   combined_rewetting_target,
   
   tar_target(
@@ -257,7 +273,8 @@ list(
   tar_target(
     rewetting_land_area,
     summarise_rewetting_land_area(
-      rewetting_sf
+      rewetting_sf,
+      input_non_spatial_rewetting
     )
   ),
   
@@ -268,17 +285,22 @@ list(
   ),
   
   tar_target(
-    pa_sf,
-    sf::st_read(combined_pa_dataset, quiet = TRUE)
+    simplified_condition_time_series_dataset,
+    create_simple_condition_ts(
+      baseline_condition_summary_dataset,
+      rewetting_summary_dataset)
   ),
-  
+
   tar_target(
-    pa_by_boundary,
-    summarise_pa_by_boundary(
-      pa = pa_sf,
-      boundary_path = boundary_vect_targets
+    output_datasets,
+    write_output_datasets(
+      rewetting_summary_dataset,
+      restoration_summary_dataset,
+      baseline_condition_summary_dataset,
+      simplified_condition_time_series_dataset
     ),
-    pattern = map(boundary_vect_targets)
+    format = "file"
   )
+  
 
 )
