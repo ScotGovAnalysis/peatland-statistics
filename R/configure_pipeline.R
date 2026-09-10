@@ -33,6 +33,10 @@ verify_target_values <-
   input_target_values |>
   dplyr::filter(fun == "verify")
 
+arcgol_api_target_values <-
+  input_target_values |>
+  dplyr::filter(fun == "arcgol_api")
+
 download_targets <- tarchetypes::tar_map(
   values = download_target_values,
   names = input_dataset_name,
@@ -57,6 +61,19 @@ verify_targets <- tarchetypes::tar_map(
   )
 )
 
+arcgol_api_targets <- tarchetypes::tar_map(
+  values = arcgol_api_target_values,
+  names = input_dataset_name,
+  targets::tar_target(
+    input,
+    download_arcgol_api_dataset(
+      input_dataset_name,
+      public_data_catalogue
+    ),
+    format = "file"
+  )
+)
+
 # Processing ----
 
 processed_target_values <- tibble::enframe(
@@ -66,6 +83,17 @@ processed_target_values <- tibble::enframe(
 ) |>
   tidyr::unnest_wider(metadata)
 
+# Dynamically construct processing targets from the configuration file.
+#
+# Each entry in config$processed_datasets specifies:
+# - the processed dataset name,
+# - the source dataset,
+# - the processing type.
+#
+# The processing type determines which arguments are passed to the
+# corresponding process_*() function. Targets are generated programmatically
+# using tar_target_raw() to avoid manually defining a target for every
+# dataset, i.e., static branching.
 processed_targets <- purrr::pmap(
   processed_target_values,
   function(processed_dataset_name, source_dataset, type) {
@@ -84,7 +112,7 @@ processed_targets <- purrr::pmap(
                  extent_list = common_extent,
                  resolution = common_resolution,
                  land_area_path = land_area_bdry_rast
-               ),
+               )
              ),
              format = "file"
            ),
@@ -94,7 +122,28 @@ processed_targets <- purrr::pmap(
              command = substitute(
                PROCESSOR(
                  source_path = SOURCE
-               ),
+               )
+             ),
+             format = "file"
+           ),
+           # catchment boundary
+           catchment_boundary = targets::tar_target_raw(
+             name = processed_dataset_name,
+             command = substitute(
+               PROCESSOR(
+                 source_path = SOURCE,
+                 land_area = land_area
+               )
+             ),
+             format = "file"
+           ),
+           # data_vis_boundary boundary
+           data_vis_boundary = targets::tar_target_raw(
+             name = processed_dataset_name,
+             command = substitute(
+               PROCESSOR(
+                 land_area = land_area
+               )
              ),
              format = "file"
            ),
@@ -106,7 +155,28 @@ processed_targets <- purrr::pmap(
                  source_path = SOURCE,
                  extent_list = common_extent,
                  resolution = common_resolution
-               ),
+               )
+             ),
+             format = "file"
+           ),
+           # restoration
+           restoration = targets::tar_target_raw(
+             name = processed_dataset_name,
+             command = substitute(
+               PROCESSOR(
+                 source_path = SOURCE
+               )
+             ),
+             format = "file"
+           ),
+           # rewetting
+           rewetting = targets::tar_target_raw(
+             name = processed_dataset_name,
+             command = substitute(
+               PROCESSOR(
+                 source_path = SOURCE,
+                 land_area = land_area
+               )
              ),
              format = "file"
            )
@@ -115,8 +185,14 @@ processed_targets <- purrr::pmap(
 )
 
 rast_boundary_values <- processed_target_values |> 
-  dplyr::filter(type == "boundary") |> 
+  dplyr::filter(type %in% c("boundary", "data_vis_boundary", "catchment_boundary")) |> 
   dplyr::select(-source_dataset)
+
+# Create rasterised versions of all boundary datasets.
+#
+# Many analyses use raster cross-tabulation rather than vector intersection.
+# Boundary datasets are therefore converted to a common raster grid after
+# processing.
 
 boundary_rast_processing_targets <- purrr::pmap(
   rast_boundary_values,
@@ -160,8 +236,20 @@ agreement_target <- targets::tar_target_raw(
   format = "file"
 )
 
-# Extent ----
 
+
+
+# Extent ----
+# Construct expressions containing all processed extent datasets.
+#
+# These expressions are used by tar_target_raw() in _targets.R to create
+# static branches over groups of datasets defined in the configuration file.
+#
+# The resulting expression has the form:
+#   c(dataset_a, dataset_b, dataset_c)
+#
+# allowing targets to iterate over all configured datasets without requiring
+# manual updates when new datasets are added.
 extent_targets_expr <- tibble::enframe(
   global_config$processed_datasets,
   name = "processed_dataset_name",
@@ -169,21 +257,55 @@ extent_targets_expr <- tibble::enframe(
 ) |>
   tidyr::unnest_wider(metadata) |>
   dplyr::filter(type == "extent") |>
+  dplyr::filter(processed_dataset_name != "nat_soil_map_std") |> 
   dplyr::pull(processed_dataset_name) |>
   lapply(as.name) |>
   (\(x) as.call(c(as.name("c"), x)))()
 
-
+# Construct expressions containing all raster boundary datasets.
 boundary_rast_targets_expr <- tibble::enframe(
   global_config$processed_datasets,
   name = "processed_dataset_name",
   value = "metadata"
 ) |>
   tidyr::unnest_wider(metadata) |>
-  dplyr::filter(type == "boundary") |>
+  dplyr::filter(type %in% c("boundary", "data_vis_boundary", "catchment_boundary")) |>
   dplyr::pull(processed_dataset_name) |>
   paste0("_rast") |> 
   lapply(as.name) |>
   (\(x) as.call(c(as.name("c"), x)))()
 
+# Construct expressions containing all vector boundary datasets.
+boundary_vect_targets_expr <- tibble::enframe(
+  global_config$processed_datasets,
+  name = "processed_dataset_name",
+  value = "metadata"
+) |>
+  tidyr::unnest_wider(metadata) |>
+  dplyr::filter(type %in% c("boundary", "data_vis_boundary", "catchment_boundary")) |>
+  dplyr::filter(processed_dataset_name != "land_area_bdry") |> 
+  dplyr::pull(processed_dataset_name) |>
+  lapply(as.name) |>
+  (\(x) as.call(c(as.name("c"), x)))()
 
+# Restoration ----
+
+rewetting_input_expr <- as.call(
+  c(
+    as.name("c"),
+    lapply(
+      global_config$combined_rewetting_dataset$input_datasets,
+      as.name
+    )
+  )
+)
+
+combined_rewetting_target <- targets::tar_target_raw(
+  name = "combined_rewetting_dataset",
+  command = bquote(
+    create_combined_rewetting_dataset(
+      input_paths = .(rewetting_input_expr)
+    )
+  ),
+  format = "file"
+)

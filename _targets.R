@@ -27,8 +27,9 @@ tar_option_set(
     "sf",
     "exactextractr",
     "httr2",
-    "fs"
-  ),
+    "fs",
+    "stringr"
+  )
 
 )
 
@@ -45,10 +46,11 @@ if (global_config$crew$use_crew) {
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
 
-# Replace the target list below with your own:
-
-# Simple targets are defined in the list below - more complex targets are defined
-# in configure_pipeline.R
+# Pipeline definition.
+#
+# This file defines the high-level analytical workflow and target
+# dependencies. Repeated and dynamically generated targets are created in
+# configure_pipeline.R to keep the main pipeline concise and maintainable.
 
 list(
   
@@ -96,6 +98,14 @@ list(
   ),
   
   tar_target(
+    public_data_catalogue_validation,
+    validate_public_data_catalogue_datasets(
+      config,
+      public_data_catalogue
+    )
+  ),
+  
+  tar_target(
     lcs_88_condition_lookup_file,
     fs::path("config", "lcs_88_condition_lookup.csv"),
     format = "file"
@@ -108,6 +118,7 @@ list(
 
   download_targets,
   verify_targets,
+  arcgol_api_targets,
   
   # Processing ----
   
@@ -115,6 +126,8 @@ list(
   
   boundary_rast_processing_targets,
 
+  # Collections of dynamically generated targets used for downstream
+  # branching analyses.
   tar_target_raw(
     name = "extent_targets",
     command = extent_targets_expr,
@@ -124,6 +137,12 @@ list(
   tar_target_raw(
     name = "boundary_rast_targets",
     command = boundary_rast_targets_expr,
+    iteration = "list"
+  ),
+  
+  tar_target_raw(
+    name = "boundary_vect_targets",
+    command = boundary_vect_targets_expr,
     iteration = "list"
   ),
 
@@ -137,6 +156,8 @@ list(
     format = "file"
   ),
   
+  # Summarise peat condition for every combination of peat extent dataset and
+  # boundary geography using dynamic cross-branching.
   tar_target(
     baseline_condition_analysis,
     summarise_condition_crosstab(
@@ -148,8 +169,157 @@ list(
   ),
   
   tar_target(
-    baseline_condition_analysis_combined,
-    dplyr::bind_rows(baseline_condition_analysis)
+    baseline_condition_summary_dataset,
+    dplyr::bind_rows(baseline_condition_analysis) |> 
+      apply_condition_assumptions()
+  ),
+  
+  # Peatland ACTION restoration workflow.
+  #
+  # Restoration records are classified by spatial data availability,
+  # footprint geometries are created where required, and restoration areas
+  # are summarised by boundary geography and nationally.
+  
+  tar_target(
+    pa_spatial_data_availability,
+    categorise_pa_by_spatial_data_availability(
+      input_pa_non_spatial[[1]],
+      pa_footprints_std,
+      pa_centroids_std
+    )
+  ),
+  
+  tar_target(
+    land_area,
+    sf::read_sf(land_area_bdry)
+  ),
+  
+  tar_target(
+    centroids_to_buffer,
+    pa_spatial_data_availability |>
+    filter(spat_data_class == "centroids only") |> 
+    select(grant_id, total_ha_restored) |>
+    distinct() |>
+    left_join(pa_centroids_std |> sf::st_read()) |> 
+    filter(total_ha_restored > 0)
+  ),
+  
+  tar_target(
+    buffered_centroids,
+    centroids_to_buffer |> 
+      mutate(geom = create_footprint(
+        geom = centroids_to_buffer$geom,
+        target_ha = centroids_to_buffer$total_ha_restored,
+        clip_geom = land_area
+      )) |> sf::st_as_sf(),
+    pattern = map(centroids_to_buffer)
+  ),
+  
+  tar_target(
+    pa_buffered_centroids_combined,
+    dplyr::bind_rows(buffered_centroids) |> 
+      left_join(pa_spatial_data_availability)
+  ),
+  
+  tar_target(
+    pa_footprints_formatted,
+    format_footprints(
+        pa_spatial_data_availability,
+        pa_footprints_std,
+        land_area)
+  ),
+  
+  tar_target(
+    combined_pa_dataset,
+    create_combined_pa_dataset(
+      pa_spatial_data_availability,
+      pa_footprints_formatted,
+      pa_buffered_centroids_combined),
+    format = "file"
+  ),
+  
+  tar_target(
+    pa_sf,
+    sf::st_read(combined_pa_dataset, quiet = TRUE)
+  ),
+  
+  tar_target(
+    pa_by_boundary,
+    summarise_pa_by_boundary(
+      pa = pa_sf,
+      boundary_path = boundary_vect_targets
+    ),
+    pattern = map(boundary_vect_targets)
+  ),
+  
+  tar_target(
+    pa_land_area,
+    summarise_pa_land_area(
+      pa = pa_sf
+    )
+  ),
+  
+  tar_target(
+    restoration_summary_dataset,
+    dplyr::bind_rows(pa_land_area,
+                     pa_by_boundary)
+  ),
+  
+  # Rewetting workflow.
+  #
+  # Rewetting datasets are combined, summarised by geography, and used to
+  # derive a simplified peat condition time series.
+  
+  combined_rewetting_target,
+  
+  tar_target(
+    rewetting_sf,
+    sf::st_read(combined_rewetting_dataset) 
+  ),
+  
+  tar_target(
+    rewetting_by_boundary,
+    summarise_rewetting_by_boundary(
+      rewetting_sf,
+      boundary_vect_targets
+    ),
+    pattern = map(boundary_vect_targets)
+  ),
+  
+  tar_target(
+    rewetting_land_area,
+    summarise_rewetting_land_area(
+      rewetting_sf,
+      input_non_spatial_rewetting
+    )
+  ),
+  
+  tar_target(
+    rewetting_summary_dataset,
+    dplyr::bind_rows(rewetting_by_boundary,
+                     rewetting_land_area)
+  ),
+  
+  # Simplified condition trajectory assuming cumulative rewetting reduces
+  # degraded peatland area over time.
+  
+  tar_target(
+    simplified_condition_time_series_dataset,
+    create_simple_condition_ts(
+      baseline_condition_summary_dataset,
+      rewetting_summary_dataset)
+  ),
+
+  tar_target(
+    output_datasets,
+    write_output_datasets(
+      rewetting_summary_dataset,
+      restoration_summary_dataset,
+      baseline_condition_summary_dataset,
+      simplified_condition_time_series_dataset
+    ),
+    format = "file"
   )
+  
 
 )

@@ -11,6 +11,15 @@ may change at any time, and the project is not considered stable.
 
 Dates follow YYYY-MM-DD format.
 
+## 0.2.0 2026-09-10
+### Added
+- restoration analysis
+- condition time series analysis
+- 10 km hex grid
+
+### Changed
+- river catchment boundary source now arcgisonline api
+
 ## 0.1.7 2026-08-27
 ### Added
 - unit testing for processing.R

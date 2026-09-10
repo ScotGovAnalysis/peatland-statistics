@@ -20,7 +20,7 @@
 #'
 create_agreement_map <- function(
     input_paths,
-    peat_class = 6
+    peat_class
 ) {
   
   s <- terra::rast(input_paths)
@@ -52,3 +52,4 @@ create_agreement_map <- function(
   raster_output_path
   
 }
+
