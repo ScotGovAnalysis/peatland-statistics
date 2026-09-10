@@ -258,10 +258,14 @@ summarise_rewetting_by_boundary <- function(
     )
 }
 
-summarise_rewetting_land_area <- function(rewetting) {
+summarise_rewetting_land_area <- function(rewetting_sf, non_spatial_path) {
   
-  rewetting |>
+  rewetting_sf |>
     sf::st_drop_geometry() |>
+    bind_rows(
+      openxlsx::read.xlsx(non_spatial_path) |>
+        mutate(area_correction_factor = 1)
+    ) |> 
     mutate(area_ha = area_ha * area_correction_factor) |> 
     dplyr::group_by(
       source,
@@ -327,5 +331,46 @@ summarise_pa_by_boundary <- function(
       delim = ":::",
       names = c("boundary_class", "boundary_name")
     )
+  
+}
+
+summarise_pa_land_area <- function(
+    pa
+){
+  
+  pa |>
+    st_drop_geometry() |> 
+    dplyr::select(
+      financial_year_end,
+      delivery_partner,
+      spat_data_class,
+      qa_area_match,
+      overlap_5_perc,
+      frac_restored_in_year,
+      total_ha_restored,
+    ) |>
+    dplyr::mutate(
+      area_ha = total_ha_restored *
+        frac_restored_in_year
+    ) |>
+    sf::st_drop_geometry() |>
+    dplyr::group_by(
+      financial_year_end,
+      delivery_partner,
+      spat_data_class,
+      qa_area_match,
+      overlap_5_perc
+    ) |>
+    dplyr::summarise(
+      area_ha = sum(area_ha),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      boundary_class = "land_area",
+      boundary_name = "mhw",
+      boundary_key = "land_area:::mhw",
+      .before = financial_year_end
+    )
+    
   
 }
