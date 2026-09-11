@@ -26,8 +26,8 @@
 #' estimated emissions. Additional variables include:
 #'
 #' * `emissions_central` - Central emissions estimate.
-#' * `emissions_ci_min` - Lower confidence interval estimate from EF.
-#' * `emissions_ci_max` - Upper confidence interval estimate from EF.
+#' * `emissions_ef_min` - Lower confidence interval estimate from EF.
+#' * `emissions_ef_max` - Upper confidence interval estimate from EF.
 #'
 #' @details
 #' Emissions are calculated as:
@@ -44,6 +44,6 @@ create_baseline_emissions_dataset <- function(baseline_condition_df, EF_df){
     select(-land_area_ha, -peat_extent_ha) |> 
     left_join(EF_df) |>
     mutate(emissions_central = area_ha * EF,
-           emissions_ci_min = area_ha * EF_CI_min,
-           emissions_ci_max = area_ha * EF_CI_max)
+           emissions_ef_min = area_ha * EF_CI_min,
+           emissions_ef_max = area_ha * EF_CI_max)
 }
