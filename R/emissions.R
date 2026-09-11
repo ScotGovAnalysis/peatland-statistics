@@ -38,12 +38,45 @@
 #' assumes that `EF_df` contains one emission factor record for each peat
 #' condition category represented in `baseline_condition_df`.
 create_baseline_emissions_dataset <- function(baseline_condition_df, EF_df){
-  baseline_condition_df |> 
-    filter(boundary_class == "land_area",
-           peat_depth_class %in% c("peat_soil_50", "peat_soil_40", "peat_soil_30")) |> 
-    select(-land_area_ha, -peat_extent_ha) |> 
-    left_join(EF_df) |>
-    mutate(emissions_central = area_ha * EF,
-           emissions_ef_min = area_ha * EF_CI_min,
-           emissions_ef_max = area_ha * EF_CI_max)
+    
+    a <- baseline_condition_df |>
+      filter(
+        boundary_class == "land_area",
+        peat_depth_class %in% c(
+          "peat_soil_50",
+          "peat_soil_40",
+          "peat_soil_30"
+        )
+      ) |>
+      select(
+        -land_area_ha,
+        -peat_extent_ha
+      ) |>
+      left_join(EF_df) |>
+      mutate(
+        emissions_central = area_ha * EF,
+        approx_lower_bound = area_ha * (EF - 2 * SE),
+        approx_upper_bound = area_ha * (EF + 2 * SE)
+      )
+    
+    total <- a |> 
+      group_by(boundary_key, boundary_class, boundary_name,
+               extent_source, peat_depth_class) |>
+      summarise(
+        condition = "total",
+        area_ha = sum(area_ha),
+        emissions_central = sum(area_ha * EF),
+        se_total = sqrt(
+          sum((area_ha * SE)^2)
+        ),
+        approx_lower_bound = emissions_central - 1.96 * se_total,
+        approx_upper_bound = emissions_central + 1.96 * se_total
+      ) |> 
+      select(-se_total)
+    
+    bind_rows(a, total)
+    
+    
 }
+
+
