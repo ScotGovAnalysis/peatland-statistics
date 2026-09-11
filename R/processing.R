@@ -1285,6 +1285,46 @@ process_ukceh_extr_rest_std <- function(source_path, land_area){
   
 }
 
+#' Read GHGI 2024 peatland area data
+#'
+#' Reads the peatland area estimates from the `"areas"` worksheet of the
+#' GHGI 2024 workbook.
+#'
+#' @param source_path Character scalar. Path to the GHGI 2024 workbook.
+#'
+#' @return A data frame containing peatland area estimates from the
+#' `"areas"` worksheet.
+process_ghgi_2024_areas <- function(source_path){
+  openxlsx::read.xlsx(source_path, sheet = "areas")
+}
+
+#' Read GHGI 2024 emission factors
+#'
+#' Reads peatland emission factors for the 1990 baseline from the
+#' `"EFs_1990"` worksheet of the GHGI 2024 workbook.
+#'
+#' @param source_path Character scalar. Path to the GHGI 2024 workbook.
+#'
+#' @return A data frame containing emission factors and associated
+#' uncertainty estimates from the `"EFs_1990"` worksheet.
+process_ghgi_2024_EFs <- function(source_path){
+  openxlsx::read.xlsx(source_path, sheet = "EFs_1990")
+}
+
+#' Read GHGI 2024 emissions estimates
+#'
+#' Reads peatland greenhouse gas emissions estimates from the `"emissions"`
+#' worksheet of the GHGI 2024 workbook.
+#'
+#' @param source_path Character scalar. Path to the GHGI 2024 workbook.
+#'
+#' @return A data frame containing emissions estimates from the
+#' `"emissions"` worksheet.
+process_ghgi_2024_emissions <- function(source_path){
+  openxlsx::read.xlsx(source_path, sheet = "emissions")
+}
+
+
 # write outputs ####
 
 #' Write output datasets to disk
@@ -1302,6 +1342,7 @@ process_ukceh_extr_rest_std <- function(source_path, land_area){
 #' * `restoration_summary_dataset.rds`
 #' * `baseline_condition_summary_dataset.rds`
 #' * `simplified_condition_time_series_dataset.rds`
+#' * `baseline_emissions_summary_dataset.rds`
 #'
 #' @param rewetting_summary_dataset Data frame containing summaries of
 #'   peatland rewetting activity.
@@ -1311,6 +1352,8 @@ process_ukceh_extr_rest_std <- function(source_path, land_area){
 #'   baseline peat condition.
 #' @param simplified_condition_time_series_dataset Data frame containing the
 #'   simplified peat condition time series.
+#' @param baseline_emissions_summary_dataset Data frame containing summaries of
+#'   baseline peat emissions.
 #'
 #' @return A character vector containing the paths to the output RDS files.
 #' Intended for use with `targets` file targets (`format = "file"`).
@@ -1322,7 +1365,8 @@ write_output_datasets <- function(
     rewetting_summary_dataset,
     restoration_summary_dataset,
     baseline_condition_summary_dataset,
-    simplified_condition_time_series_dataset
+    simplified_condition_time_series_dataset,
+    baseline_emissions_summary_dataset
 ) {
   
   output_dir <- fs::path("data", "outputs")
@@ -1349,16 +1393,23 @@ write_output_datasets <- function(
     "simplified_condition_time_series_dataset.rds"
   )
   
+  emissions_file <- fs::path(
+    output_dir,
+    "baseline_emissions_summary_dataset.rds"
+  )
+  
   saveRDS(rewetting_summary_dataset, rewetting_file)
   saveRDS(restoration_summary_dataset, restoration_file)
   saveRDS(baseline_condition_summary_dataset, baseline_file)
   saveRDS(simplified_condition_time_series_dataset, timeseries_file)
+  saveRDS(baseline_emissions_summary_dataset, emissions_file)
   
   c(
     rewetting_file,
     restoration_file,
     baseline_file,
-    timeseries_file
+    timeseries_file,
+    emissions_file
   )
 }
 

@@ -309,6 +309,12 @@ list(
       baseline_condition_summary_dataset,
       rewetting_summary_dataset)
   ),
+  
+  tar_target(baseline_emissions_summary_dataset,
+             create_baseline_emissions_dataset(
+               baseline_condition_summary_dataset,
+               ghgi_2024_EFs
+             )),
 
   tar_target(
     output_datasets,
@@ -316,7 +322,8 @@ list(
       rewetting_summary_dataset,
       restoration_summary_dataset,
       baseline_condition_summary_dataset,
-      simplified_condition_time_series_dataset
+      simplified_condition_time_series_dataset,
+      baseline_emissions_summary_dataset
     ),
     format = "file"
   )
