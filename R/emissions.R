@@ -90,9 +90,9 @@ create_baseline_emissions_dataset <- function(baseline_condition_df, EF_df) {
     ) |>
     summarise(
       condition = "total",
+      se_total = sqrt(sum((area_ha * SE)^2)),
       area_ha = sum(area_ha),
       emissions_central = sum(emissions_central),
-      se_total = sqrt(sum((area_ha * SE)^2)),
       approx_lower_bound = emissions_central - 2 * se_total,
       approx_upper_bound = emissions_central + 2 * se_total,
       .groups = "drop"
