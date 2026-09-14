@@ -60,7 +60,7 @@
 #' formal confidence intervals.
 create_baseline_emissions_dataset <- function(baseline_condition_df, EF_df){
     
-    a <- baseline_condition_df |>
+    processed <- baseline_condition_df |>
       filter(
         boundary_class == "land_area",
         peat_depth_class %in% c(
@@ -73,29 +73,37 @@ create_baseline_emissions_dataset <- function(baseline_condition_df, EF_df){
         -land_area_ha,
         -peat_extent_ha
       ) |>
-      left_join(EF_df) |>
+      left_join(EF_df, by = "condition") |>
       mutate(
         emissions_central = area_ha * EF,
         approx_lower_bound = area_ha * (EF - 2 * SE),
         approx_upper_bound = area_ha * (EF + 2 * SE)
       )
     
-    total <- a |> 
-      group_by(boundary_key, boundary_class, boundary_name,
-               extent_source, peat_depth_class) |>
-      summarise(
+    total <- processed |>
+      group_by(
+        boundary_key,
+        boundary_class,
+        boundary_name,
+        extent_source,
+        peat_depth_class
+      ) |>
+      mutate(
         condition = "total",
-        area_ha = sum(area_ha),
-        emissions_central = sum(area_ha * EF),
-        se_total = sqrt(
-          sum((area_ha * SE)^2)
-        ),
-        approx_lower_bound = emissions_central - 2 * se_total,
-        approx_upper_bound = emissions_central + 2 * se_total
+        emissions_central = sum(emissions_central),
+        var = ((area_ha * SE) ^ 2),
+        se_total = sqrt(sum(var))
+      ) |>
+      mutate(
+        approx_lower_bound = emissions_central - (2 * se_total),
+        approx_upper_bound = emissions_central + (2 * se_total),
+        area_ha = sum(area_ha)
       ) |> 
-      select(-se_total)
+      select(-var, -se_total) |> 
+      slice_head(n=1) |> 
+      ungroup()
     
-    bind_rows(a, total)
+    bind_rows(processed, total)
     
     
 }
