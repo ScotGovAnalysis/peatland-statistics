@@ -585,6 +585,7 @@ summarise_rewetting_land_area <- function(rewetting_sf, non_spatial_path) {
 #' * `overlap_5_perc` - Indicator of substantial overlap with another
 #'   restoration footprint.
 #' * `area_ha` - Total restored area (hectares) within the boundary.
+#' * `count` - Number of projects.
 #'
 #' @details
 #' Areas are calculated from the intersected geometries and multiplied by both
@@ -633,6 +634,7 @@ summarise_pa_by_boundary <- function(
     ) |>
     dplyr::summarise(
       area_ha = sum(area_ha),
+      count = n(),
       .groups = "drop"
     ) |>
     tidyr::separate_wider_delim(
@@ -677,6 +679,7 @@ summarise_pa_by_boundary <- function(
 #' * `overlap_5_perc` - Indicator of substantial overlap with another
 #'   restoration footprint.
 #' * `area_ha` - Total restored area (hectares).
+#' * `count` - Number of projects.
 #'
 #' @details
 #' Restored area is calculated as `total_ha_restored *
@@ -713,6 +716,7 @@ summarise_pa_land_area <- function(
     ) |>
     dplyr::summarise(
       area_ha = sum(area_ha),
+      count = n(),
       .groups = "drop"
     ) |>
     dplyr::mutate(
