@@ -928,6 +928,52 @@ process_agri_bdry <- function(source_path){
   output_path
 }
 
+#' Process aggregated agricultural land boundary
+#'
+#' Reads the agricultural land boundary dataset, dissolves all component
+#' boundaries into a single geometry representing the combined extent of
+#' agricultural land, standardises the boundary attribute schema using a
+#' `boundary_key`, and writes the result to a GeoPackage for use in
+#' downstream analyses.
+#'
+#' The output represents the union of all agricultural land classes,
+#' including both BPS claimed land and common grazings.
+#'
+#' @param source_path Character scalar giving the path to the source
+#'   agricultural land boundary dataset.
+#'
+#' @return A character scalar giving the path to the processed GeoPackage
+#'   file. Intended for use with `targets` file targets (`format = "file"`).
+#'
+#' @details
+#' A single boundary feature is created with the identifier:
+#'
+#' `agricultural land:::all agricultural land`
+#'
+#' This boundary can be used to generate summary statistics across the
+#' entire agricultural land extent without distinguishing between
+#' constituent agricultural land classes.
+#'
+process_all_agri_bdry <- function(source_path){
+  
+  v <- terra::vect(source_path) |> 
+    terra::aggregate()
+  
+  v$boundary_key <- paste0("agricultural land",":::","all agricultural land")
+  
+  v <- v[, "boundary_key"]
+  
+  output_path <- fs::path("data", "processed", "all_agri.gpkg")
+  
+  terra::writeVector(
+    v,
+    filename = output_path,
+    overwrite = TRUE
+  )
+  
+  output_path
+}
+
 #' Process public land boundary
 #'
 #' Reads the boundary geometries, standardises the boundary attributes to
