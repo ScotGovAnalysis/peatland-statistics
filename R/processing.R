@@ -795,10 +795,10 @@ rasterize_boundary <- function(source_path, extent_list, resolution){
   terra::rasterize(v,
                    r_template,
                    field = "boundary_key",
+                   background = NA,
                    filename = output_path,
                    overwrite = TRUE,
                    wopt = list(
-                     datatype = "INT2U",
                      gdal = c(
                        "TILED=YES"
                      )
