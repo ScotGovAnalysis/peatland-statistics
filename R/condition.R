@@ -37,7 +37,7 @@
 #' @details
 #' The output raster stores peat condition classes as unsigned 8-bit integer
 #' values with associated category labels. The raster is written to
-#' `data/processed/basemap_unclipped.tif` using LZW compression and tiled
+#' `data/processed/basemap_unclipped.tif` using ZSTD compression and tiled
 #' storage.
 #'
 #' The output is described as "unclipped" because peat condition summaries are
@@ -47,6 +47,8 @@
 create_unclipped_basemap <- function(lcs_88_std,
                                      lca_std,
                                      lcs_88_condition_lookup){
+  
+  configure_terra()
   
   cli::cli_alert_info("Unclipped basemap: reading datasets - {Sys.time()}")
   
@@ -58,17 +60,17 @@ create_unclipped_basemap <- function(lcs_88_std,
   
   lookup <- lcs_88_condition_lookup
   
-  # labels 
+  # labels
   
   labels <- terra::levels(lcs_88)[[1]]
-
+  
   labels <- dplyr::full_join(
     labels,
     lookup,
     by = "DOMTEXT"
   ) |> 
     dplyr::bind_rows(
-      data.frame(value = 200, # add value to facilitate uplands correction
+      data.frame(value = 200L, # add value to facilitate uplands correction
                  DOMTEXT = "modified bog (lca uplands correction)",
                  condition = "modified bog (lca uplands correction)")
     ) |> 
@@ -78,20 +80,23 @@ create_unclipped_basemap <- function(lcs_88_std,
       condition_value = dplyr::cur_group_id()
     ) |>
     dplyr::ungroup() 
-    
-
-  cli::cli_alert_info("Unclipped basemap: classifying - {Sys.time()}")
   
   # classify 
+  
+  cli::cli_alert_info("Unclipped basemap: classifying - {Sys.time()}")
   
   lcs_88 <- terra::classify(
     lcs_88,
     labels |> dplyr::select(value, condition_value)
   )
   
-  cli::cli_alert_info("Unclipped basemap: get uplands correction indices - {Sys.time()}")
+  levels(lcs_88) <- labels |> dplyr::select(condition_value, condition) |> 
+    dplyr::distinct()
   
-  # uplands correction and na to mapping offset
+  crs(lcs_88) <- "EPSG:27700"
+  crs(lca) <- "EPSG:27700"
+  
+  # uplands correction
   
   extensive_grassland_value <- labels |>
     dplyr::filter(condition == "extensive grassland") |>
@@ -108,51 +113,35 @@ create_unclipped_basemap <- function(lcs_88_std,
     dplyr::pull(value) |> 
     dplyr::first()
   
+  cli::cli_alert_info("Unclipped basemap: get uplands correction indices - {Sys.time()}")
+  
   uplands_correction_indices <-
-    lcs_88$DOMTEXT == extensive_grassland_value &
-    lca$SqMid == uplands_code
+    lcs_88 %in% extensive_grassland_value &
+    lca == uplands_code
   
-  mapping_offset_value <- labels |>
-    dplyr::filter(condition == "mapping offset") |>
-    dplyr::pull(condition_value) |> 
-    dplyr::first()
+  cli::cli_alert_info("Unclipped basemap: apply uplands correction and save - {Sys.time()}")
   
-  cli::cli_alert_info("Unclipped basemap: apply uplands correction - {Sys.time()}")
-  
-  lcs_88[uplands_correction_indices] <- uplands_correction_value
-  
-  cli::cli_alert_info("Unclipped basemap: NA to mapping offset - {Sys.time()}")
-  
-  lcs_88 <- terra::ifel(is.na(lcs_88), mapping_offset_value, lcs_88)
-
-  cli::cli_alert_info("Unclipped basemap: update levels and crs - {Sys.time()}")
-  
-  # update levels
-  
-  levels(lcs_88) <- labels |> dplyr::select(condition_value, condition) |> 
-    dplyr::distinct()
-  
-  # set crs
-  
-  crs(lcs_88) <- "EPSG:27700"
-  
-  cli::cli_alert_info("Unclipped basemap: saving output - {Sys.time()}")
-  
-  # save output
   output_path <- fs::path("data", "processed", "basemap_unclipped.tif")
   
-  terra::writeRaster(
+  terra::mask(
     lcs_88,
+    uplands_correction_indices,
+    maskvalues = TRUE,
+    updatevalue = uplands_correction_value,
     filename = output_path,
     overwrite = TRUE,
-    datatype = "INT1U",
-    gdal = c(
-      "COMPRESS=LZW",
-      "TILED=YES"
+    wopt = list(
+      datatype = "INT1U",
+      gdal = c(
+        "TILED=YES"
+      )
     )
   )
   
+  cli::cli_alert_info("Unclipped basemap completed  - {Sys.time()}")
+  
   output_path
+
 }
 
 #' Summarise peat condition by extent class and boundary
@@ -196,6 +185,9 @@ create_unclipped_basemap <- function(lcs_88_std,
 #' boundary.
 #' * `land_area_ha`: Total land area (ha) within the boundary.
 summarise_condition_crosstab <- function(extent_path, boundary_path, condition_path){
+  
+  configure_terra()
+  
   # datasets
   extent <- terra::rast(extent_path)
   boundary <- terra::rast(boundary_path)

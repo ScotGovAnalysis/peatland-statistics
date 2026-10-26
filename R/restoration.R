@@ -210,10 +210,10 @@ create_footprint <- function(
 #' agree. Agreement is defined as either:
 #'
 #' * An absolute area difference of no more than 1 hectare; or
-#' * A relative area difference of no more than 2%.
+#' * A relative area difference of no more than 10%.
 #'
 #' The function also identifies overlapping footprints and records whether at
-#' least 5% of a footprint's area is covered by another restoration footprint.
+#' least 10% of a footprint's area is covered by another restoration footprint.
 #'
 #' After quality assurance checks, footprints are cropped to the Scotland land
 #' area boundary and an area correction factor is calculated to preserve the
@@ -229,7 +229,7 @@ create_footprint <- function(
 #' * `max_overlap_ha` - Maximum overlap area with another footprint.
 #' * `prop_covered` - Proportion of footprint area overlapped by another
 #'   footprint.
-#' * `overlap_5_perc` - Indicator for footprints with at least 5% overlap.
+#' * `overlap_10_perc` - Indicator for footprints with at least 5% overlap.
 #' * `cropped_area_ha` - Footprint area after cropping to land area.
 #' * `area_correction_factor` - Ratio of reported restoration area to cropped
 #'   footprint area.
@@ -263,7 +263,7 @@ format_footprints <- function(
       geom_ha = as.numeric(st_area(geom)) / 10000,
       area_diff_ha = geom_ha - total_ha_restored,
       area_diff_pct = abs(area_diff_ha) / total_ha_restored,
-      qa_area_match = abs(area_diff_ha) <= 1 | area_diff_pct <= 0.02
+      qa_area_match = abs(area_diff_ha) <= 1 | area_diff_pct <= 0.1
     )
   
   overlaps <- st_intersection(
@@ -282,7 +282,7 @@ format_footprints <- function(
   footprints <- left_join(footprints,
                           overlaps) |> 
     mutate(prop_covered = max_overlap_ha / geom_ha,
-           overlap_5_perc = if_else(prop_covered >= 0.05, TRUE, FALSE)) |> 
+           overlap_10_perc = if_else(prop_covered >= 0.1, TRUE, FALSE)) |> 
     st_crop(land_area) |> 
     mutate(cropped_area_ha = st_area(geom) |> as.numeric() |> (\(x) x / 10000)(),
            area_correction_factor = total_ha_restored / cropped_area_ha)
@@ -453,21 +453,35 @@ summarise_rewetting_by_boundary <- function(
     dplyr::select(boundary_key)
   
   rewetting <- rewetting |>
-    dplyr::select(source, year, area_correction_factor)
+    dplyr::select(source, year, area_correction_factor) |> 
+    sf::st_crop(sf::st_bbox(boundary))
+  
+  # avoid unnecessary intersections using st_within and st_intersects
+  
+  within <- sf::st_within(rewetting, boundary)
+  
+  contained_idx <- lengths(within) == 1
+  
+  rewetting_contained <- rewetting[contained_idx, ]
+  rewetting_crossing  <- rewetting[!contained_idx, ]
+  
+  rewetting_contained$boundary_key <-
+    boundary$boundary_key[
+      unlist(within[contained_idx])
+    ]
   
   hits <- sf::st_intersects(
-    rewetting,
+    rewetting_crossing,
     boundary
   )
   
-  rewetting <- rewetting[
-    lengths(hits) > 0,
-  ]
+  rewetting_crossing <- rewetting_crossing[lengths(hits) > 0, ]
   
   sf::st_intersection(
-    rewetting,
+    rewetting_crossing,
     boundary
   ) |>
+    dplyr::bind_rows(rewetting_contained) |> 
     dplyr::mutate(
       area_ha =
         as.numeric(sf::st_area(geom)) / 10000 * area_correction_factor
@@ -561,12 +575,14 @@ summarise_rewetting_land_area <- function(rewetting_sf, non_spatial_path) {
 #' status, together with the total restored area assigned to that group.
 #'
 #' To improve performance, restoration geometries are first cropped to the
-#' bounding box of the boundary dataset before spatial intersection.
+#' bounding box of the boundary dataset and then filtered using
+#' [sf::st_intersects()] before the more computationally expensive
+#' [sf::st_intersection()] operation is performed.
 #'
 #' @param pa An `sf` object containing Peatland ACTION restoration geometries
 #'   and associated attributes, including `financial_year_end`,
 #'   `delivery_partner`, `spat_data_class`, `qa_area_match`,
-#'   `overlap_5_perc`, `frac_restored_in_year`, and
+#'   `overlap_10_perc`, `frac_restored_in_year`, and
 #'   `area_correction_factor`.
 #' @param boundary_path Character scalar. Path to a boundary dataset readable
 #'   by [sf::st_read()]. The dataset must contain a `boundary_key` field in
@@ -582,7 +598,7 @@ summarise_rewetting_land_area <- function(rewetting_sf, non_spatial_path) {
 #' * `spat_data_class` - Spatial data availability classification.
 #' * `qa_area_match` - Indicator of agreement between mapped and reported
 #'   restoration area.
-#' * `overlap_5_perc` - Indicator of substantial overlap with another
+#' * `overlap_10_perc` - Indicator of substantial overlap with another
 #'   restoration footprint.
 #' * `area_ha` - Total restored area (hectares) within the boundary.
 #' * `count` - Number of projects.
@@ -598,6 +614,8 @@ summarise_pa_by_boundary <- function(
     boundary_path
 ){
   
+  sf::sf_use_s2(FALSE)
+  
   boundary <- sf::st_read(boundary_path, quiet = TRUE) |>
     dplyr::select(boundary_key)
   
@@ -607,16 +625,38 @@ summarise_pa_by_boundary <- function(
       delivery_partner,
       spat_data_class,
       qa_area_match,
-      overlap_5_perc,
+      overlap_10_perc,
       frac_restored_in_year,
       area_correction_factor
     ) |>
     sf::st_crop(sf::st_bbox(boundary))
   
+  # avoid unnecessary intersections using st_within and st_intersects
+  
+  within <- sf::st_within(pa, boundary)
+  
+  contained_idx <- lengths(within) == 1
+  
+  pa_contained <- pa[contained_idx, ]
+  pa_crossing  <- pa[!contained_idx, ]
+  
+  pa_contained$boundary_key <-
+    boundary$boundary_key[
+      unlist(within[contained_idx])
+    ]
+  
+  hits <- sf::st_intersects(
+    pa_crossing,
+    boundary
+  )
+  
+  pa_crossing <- pa_crossing[lengths(hits) > 0, ]
+  
   sf::st_intersection(
-    pa,
+    pa_crossing,
     boundary
   ) |>
+    dplyr::bind_rows(pa_contained) |> 
     dplyr::mutate(
       area_ha =
         (as.numeric(sf::st_area(geom)) / 10000) *
@@ -630,11 +670,10 @@ summarise_pa_by_boundary <- function(
       delivery_partner,
       spat_data_class,
       qa_area_match,
-      overlap_5_perc
+      overlap_10_perc
     ) |>
     dplyr::summarise(
       area_ha = sum(area_ha),
-      count = n(),
       .groups = "drop"
     ) |>
     tidyr::separate_wider_delim(
@@ -644,6 +683,7 @@ summarise_pa_by_boundary <- function(
     )
   
 }
+
 
 #' Summarise Peatland ACTION restoration for the Scotland land area
 #'
@@ -663,7 +703,7 @@ summarise_pa_by_boundary <- function(
 #' @param pa An `sf` object containing Peatland ACTION restoration records and
 #'   associated attributes, including `financial_year_end`,
 #'   `delivery_partner`, `spat_data_class`, `qa_area_match`,
-#'   `overlap_5_perc`, `frac_restored_in_year`, and
+#'   `overlap_10_perc`, `frac_restored_in_year`, and
 #'   `total_ha_restored`.
 #'
 #' @return A tibble containing:
@@ -676,7 +716,7 @@ summarise_pa_by_boundary <- function(
 #' * `spat_data_class` - Spatial data availability classification.
 #' * `qa_area_match` - Indicator of agreement between mapped and reported
 #'   restoration area.
-#' * `overlap_5_perc` - Indicator of substantial overlap with another
+#' * `overlap_10_perc` - Indicator of substantial overlap with another
 #'   restoration footprint.
 #' * `area_ha` - Total restored area (hectares).
 #' * `count` - Number of projects.
@@ -698,7 +738,7 @@ summarise_pa_land_area <- function(
       delivery_partner,
       spat_data_class,
       qa_area_match,
-      overlap_5_perc,
+      overlap_10_perc,
       frac_restored_in_year,
       total_ha_restored,
     ) |>
@@ -712,11 +752,10 @@ summarise_pa_land_area <- function(
       delivery_partner,
       spat_data_class,
       qa_area_match,
-      overlap_5_perc
+      overlap_10_perc
     ) |>
     dplyr::summarise(
       area_ha = sum(area_ha),
-      count = n(),
       .groups = "drop"
     ) |>
     dplyr::mutate(
