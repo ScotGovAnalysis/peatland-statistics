@@ -195,8 +195,7 @@ discretise_peat_depth <- function(x) {
 #' Cells outside the Scotland land area boundary are assigned `NA`, and any
 #' missing values within the land area are replaced with `0`.
 #'
-#' The output is written as an unsigned 8-bit integer raster with ZSTD
-#' compression and tiled storage.
+#' The output is written as an unsigned 8-bit integer raster with tiled storage.
 #'
 #' @param source_path Character scalar. Path to the ZIP archive containing
 #' the source peat depth raster.
@@ -261,8 +260,7 @@ process_aitkenhead_20_pd_std <- function(source_path, extent_list, resolution,
 #' Cells outside the Scotland land area boundary are assigned `NA`, and any
 #' missing values within the land area are replaced with `0`.
 #'
-#' The output is written as an unsigned 8-bit integer raster with ZSTD
-#' compression and tiled storage.
+#' The output is written as an unsigned 8-bit integer raster with tiled storage.
 #'
 #' @param source_path Character scalar. Path to the source raster file.
 #' @param extent_list List defining the target spatial extent passed to
@@ -326,8 +324,7 @@ process_gagkas_24_psum_std <- function(source_path, extent_list, resolution,
 #' Cells outside the Scotland land area boundary are assigned `NA`, and any
 #' missing values within the land area are replaced with `0`.
 #'
-#' The output is written as an unsigned 8-bit integer raster with ZSTD
-#' compression and tiled storage.
+#' The output is written as an unsigned 8-bit integer raster with tiled storage.
 #'
 #' @param source_path Character scalar. Path to the source raster file.
 #' @param extent_list List defining the target spatial extent passed to
@@ -389,7 +386,7 @@ process_robb_25_pd_std <- function(source_path, extent_list, resolution,
 #' the project. Cells outside the Scotland land area boundary are assigned
 #' `NA`, and missing values within the land area are replaced with `0`.
 #'
-#' The output is written as a tiled GeoTIFF with ZSTD compression.
+#' The output is written as a tiled GeoTIFF with tiled storage.
 #'
 #' @param source_path Character vector containing the path to the downloaded
 #'   ZIP archive. The first element is assumed to contain the National Soil
@@ -714,8 +711,7 @@ process_ghgi_condition_std <- function(source_path, extent_list, resolution){
 #' Cells outside the Scotland land area boundary are assigned `NA`, and any
 #' missing values within the land area are replaced with `0`.
 #'
-#' The output is written as an unsigned 8-bit integer raster with ZSTD
-#' compression and tiled storage.
+#' The output is written as an unsigned 8-bit integer raster with tiled storage.
 #'
 #' @param source_path Character scalar. Path to the source vector dataset.
 #' @param extent_list List defining the spatial extent of the output raster.
@@ -768,8 +764,8 @@ process_ghgi_extent_std <- function(source_path, extent_list, resolution,
 #' supplied extent and resolution, and rasterises the `boundary_key`
 #' attribute onto the target grid.
 #'
-#' The output raster is written as an unsigned 16-bit integer GeoTIFF with
-#' ZSTD compression and tiled storage. The output filename is derived from the
+#' The output raster is written as an unsigned 16-bit integer GeoTIFF with 
+#' tiled storage. The output filename is derived from the
 #' input GeoPackage path by replacing the `.gpkg` suffix with `_rast.tif`.
 #'
 #' @param source_path Character scalar. Path to a processed boundary
