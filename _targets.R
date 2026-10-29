@@ -310,11 +310,36 @@ list(
       rewetting_summary_dataset)
   ),
   
+  # Emissions workflow
+  
   tar_target(baseline_emissions_summary_dataset,
              create_baseline_emissions_dataset(
                baseline_condition_summary_dataset,
                ghgi_2024_EFs
              )),
+  
+  tar_target(extraction_emissions_dataset,
+             create_extraction_emissions_dataset(
+               ghgi_2024_extraction_volumes
+             )),
+  
+  tar_target(rewetting_emissions_ex_forestry_dataset,
+             create_rewetting_emissions_ex_forestry_dataset(
+               ghgi_2024_rewetting_emissions,
+               ghgi_2024_EFs
+             )),
+  
+  tar_target(combined_emissions_dataset,
+             list(
+               baseline_emissions_summary_dataset,
+               ghgi_2024_areas,
+               ghgi_2024_emissions,
+               ghgi_2024_emissions_context,
+               rewetting_emissions_ex_forestry_dataset,
+               extraction_emissions_dataset,
+             )),
+  
+  # Outputs
 
   tar_target(
     output_datasets,
@@ -323,7 +348,7 @@ list(
       restoration_summary_dataset,
       baseline_condition_summary_dataset,
       simplified_condition_time_series_dataset,
-      baseline_emissions_summary_dataset
+      combined_emissions_dataset
     ),
     format = "file"
   )

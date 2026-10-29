@@ -1395,17 +1395,57 @@ process_ghgi_2024_EFs <- function(source_path){
   openxlsx::read.xlsx(source_path, sheet = "EFs_1990")
 }
 
-#' Read GHGI 2024 emissions estimates
+#' Read GHGI 2024 emissions time series estimates
 #'
-#' Reads peatland greenhouse gas emissions estimates from the `"emissions"`
+#' Reads peatland greenhouse gas emissions estimates from the `"emissions_ts"`
 #' worksheet of the GHGI 2024 workbook.
 #'
 #' @param source_path Character scalar. Path to the GHGI 2024 workbook.
 #'
 #' @return A data frame containing emissions estimates from the
-#' `"emissions"` worksheet.
-process_ghgi_2024_emissions <- function(source_path){
-  openxlsx::read.xlsx(source_path, sheet = "emissions")
+#' `"emissions_ts"` worksheet.
+process_ghgi_2024_emissions_ts <- function(source_path){
+  openxlsx::read.xlsx(source_path, sheet = "emissions_ts")
+}
+
+#' Read GHGI 2024 emissions estimates by Territorial Emissions Sector, and
+#' relevant subsectors for 2024
+#'
+#' Reads peatland greenhouse gas emissions estimates from the
+#' `"emissions_context"` worksheet of the GHGI 2024 workbook.
+#'
+#' @param source_path Character scalar. Path to the GHGI 2024 workbook.
+#'
+#' @return A data frame containing emissions estimates from the
+#' `"emissions_context"` worksheet.
+process_ghgi_2024_emissions_context <- function(source_path){
+  openxlsx::read.xlsx(source_path, sheet = "emissions_context")
+}
+
+#' Read GHGI 2024 emissions estimates from rewetting.
+#'
+#' Reads peatland greenhouse gas emissions estimates from the
+#' `"rewetting_emissions"` worksheet of the GHGI 2024 workbook.
+#'
+#' @param source_path Character scalar. Path to the GHGI 2024 workbook.
+#'
+#' @return A data frame containing emissions estimates from the
+#' `"rewetting_emissions"` worksheet.
+process_ghgi_2024_rewetting_emissions <- function(source_path){
+  openxlsx::read.xlsx(source_path, sheet = "rewetting_emissions")
+}
+
+#' Read GHGI 2024 peat extraction volumes
+#'
+#' Reads estimates of peat extraction volumes from the
+#' `"extraction_volumes"` worksheet of the GHGI 2024 workbook.
+#'
+#' @param source_path Character scalar. Path to the GHGI 2024 workbook.
+#'
+#' @return A data frame containing emissions estimates from the
+#' `"extraction_volumes"` worksheet.
+process_ghgi_2024_extraction_volumes <- function(source_path){
+  openxlsx::read.xlsx(source_path, sheet = "extraction_volumes")
 }
 
 
@@ -1427,6 +1467,7 @@ process_ghgi_2024_emissions <- function(source_path){
 #' * `baseline_condition_summary_dataset.rds`
 #' * `simplified_condition_time_series_dataset.rds`
 #' * `baseline_emissions_summary_dataset.rds`
+#' * `wider_emissions_dataset.rds`
 #'
 #' @param rewetting_summary_dataset Data frame containing summaries of
 #'   peatland rewetting activity.
@@ -1438,6 +1479,8 @@ process_ghgi_2024_emissions <- function(source_path){
 #'   simplified peat condition time series.
 #' @param baseline_emissions_summary_dataset Data frame containing summaries of
 #'   baseline peat emissions.
+#' @param baseline_emissions_summary_dataset Data frame containing summaries of
+#'   wider emissions context.
 #'
 #' @return A character vector containing the paths to the output RDS files.
 #' Intended for use with `targets` file targets (`format = "file"`).
@@ -1450,7 +1493,7 @@ write_output_datasets <- function(
     restoration_summary_dataset,
     baseline_condition_summary_dataset,
     simplified_condition_time_series_dataset,
-    baseline_emissions_summary_dataset
+    combined_emissions_dataset
 ) {
   
   output_dir <- fs::path("data", "outputs")
@@ -1479,14 +1522,15 @@ write_output_datasets <- function(
   
   emissions_file <- fs::path(
     output_dir,
-    "baseline_emissions_summary_dataset.rds"
+    "combined_emissions_dataset.rds"
   )
+  
   
   saveRDS(rewetting_summary_dataset, rewetting_file)
   saveRDS(restoration_summary_dataset, restoration_file)
   saveRDS(baseline_condition_summary_dataset, baseline_file)
   saveRDS(simplified_condition_time_series_dataset, timeseries_file)
-  saveRDS(baseline_emissions_summary_dataset, emissions_file)
+  saveRDS(combined_emissions_dataset, emissions_file)
   
   c(
     rewetting_file,
