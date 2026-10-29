@@ -333,10 +333,10 @@ list(
              list(
                baseline_emissions_summary_dataset,
                ghgi_2024_areas,
-               ghgi_2024_emissions,
+               ghgi_2024_emissions_ts,
                ghgi_2024_emissions_context,
                rewetting_emissions_ex_forestry_dataset,
-               extraction_emissions_dataset,
+               extraction_emissions_dataset
              )),
   
   # Outputs
