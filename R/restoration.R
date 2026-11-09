@@ -732,7 +732,7 @@ summarise_pa_land_area <- function(
 ){
   
   pa |>
-    st_drop_geometry() |> 
+    sf::st_drop_geometry() |> 
     dplyr::select(
       financial_year_end,
       delivery_partner,
