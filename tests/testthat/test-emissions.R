@@ -260,3 +260,22 @@ test_that("total rewetting emissions are calculated correctly", {
   )
   
 })
+
+test_that("extraction emissions are calculated row-wise", {
+  
+  x <- tibble::tibble(
+    industrial_volume = c(0, 1000, 2000)
+  )
+  
+  result <- create_extraction_emissions_dataset(x)
+  
+  expect_equal(
+    result$off_site_industrial_emissions,
+    c(
+      0,
+      1000 * 0.0641 * 44/12,
+      2000 * 0.0641 * 44/12
+    )
+  )
+  
+})

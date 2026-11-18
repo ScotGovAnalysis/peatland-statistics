@@ -679,7 +679,8 @@ summarise_pa_by_boundary <- function(
     tidyr::separate_wider_delim(
       boundary_key,
       delim = ":::",
-      names = c("boundary_class", "boundary_name")
+      names = c("boundary_class", "boundary_name"),
+      cols_remove = FALSE
     )
   
 }

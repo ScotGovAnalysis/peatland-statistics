@@ -426,7 +426,7 @@ create_simple_condition_ts <- function(condition_df,
     group_by(boundary_key, year) |>
     summarise(rewetted = sum(rewetted), .groups = "drop") |>
     bind_rows(
-      rewetting_df |>
+      condition_df |>
         distinct(boundary_key) |>
         mutate(
           year = 1990,

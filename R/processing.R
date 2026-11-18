@@ -518,7 +518,7 @@ process_las_bdry <- function(source_path){
     fs::path(extract_dir, "pub_las.shp")
   )
   
-  v$boundary_key <- paste0("local authority",":::",v$local_auth)
+  v$boundary_key <- paste0("Local authority",":::",v$local_auth)
   
   v <- v[, "boundary_key"]
   
@@ -635,15 +635,16 @@ process_lca_std <- function(source_path, extent_list, resolution){
   
   output <- terra::rasterize(v,
                              r_template,
-                             field = "SqMid",
-                             filename = output_path,
-                             overwrite = TRUE,
-                             wopt = list(
-                               datatype = "INT2U",
-                               gdal = c(
-                                 "TILED=YES"
-                               )
-                             ))
+                             field = "SqMid")
+  terra::writeRaster(
+    output,
+    filename = output_path,
+    datatype = "INT1U",
+    overwrite = TRUE,
+    gdal = c(
+      "TILED=YES"
+    )
+  )
   
   output_path
   
@@ -683,15 +684,17 @@ process_ghgi_condition_std <- function(source_path, extent_list, resolution){
   
   output <- terra::rasterize(v,
                              r_template,
-                             field = "Condition",
-                             filename = output_path,
-                             overwrite = TRUE,
-                             wopt = list(
-                               datatype = "INT1U",
-                               gdal = c(
-                                 "TILED=YES"
-                               )
-                             ))
+                             field = "Condition")
+
+  terra::writeRaster(
+    output,
+    filename = output_path,
+    datatype = "INT1U",
+    overwrite = TRUE,
+    gdal = c(
+      "TILED=YES"
+    )
+  )
   
   output_path
 }
@@ -835,7 +838,7 @@ process_lltnp_bdry <- function(source_path){
     fs::path(extract_dir, "SG_LochLomondTrossachsNationalPark_2002.shp")
   )
   
-  v$boundary_key <- paste0("national park", ":::", "lltnp")
+  v$boundary_key <- paste0("national park", ":::", "Loch Lomond & the Trossachs National Park")
   
   v <- v[, "boundary_key"]
   
@@ -876,7 +879,7 @@ process_cnp_bdry <- function(source_path){
     fs::path(extract_dir, "SG_CairngormsNationalPark_2010.shp")
   )
   
-  v$boundary_key <- paste0("national park",":::","cnp")
+  v$boundary_key <- paste0("national park",":::","Cairngorms National Park")
   
   v <- v[, "boundary_key"]
   
@@ -922,7 +925,7 @@ process_catchments_bdry <- function(source_path, land_area){
   sf::sf_use_s2(FALSE)
    
   v <- sf::st_read(source_path[[1]]) |> 
-    mutate(boundary_key = paste0("catchment",":::",gi02_catchno," - ",catchment_name)) |> 
+    mutate(boundary_key = paste0("Catchment",":::",gi02_catchno," - ",catchment_name)) |> 
     sf::st_crop(land_area) |> 
     filter(as.numeric(st_area(geom)) >= (100*1000*1000)) |> # 100 km2
     select(boundary_key) 
@@ -955,7 +958,14 @@ process_agri_bdry <- function(source_path){
   
   v <- terra::vect(source_path)
   
-  v$boundary_key <- paste0("agricultural land",":::",v$class)
+  v$boundary_key <- paste0(
+    "Agricultural land:::",
+    dplyr::recode(
+      v$class,
+      "bps" = "Claimed under Basic Payment Scheme",
+      "common grazings only" = "Common grazings"
+    )
+  )
   
   v <- v[, "boundary_key"]
   
@@ -990,7 +1000,7 @@ process_agri_bdry <- function(source_path){
 #' @details
 #' A single boundary feature is created with the identifier:
 #'
-#' `agricultural land:::all agricultural land`
+#' `Agricultural land:::All agricultural land`
 #'
 #' This boundary can be used to generate summary statistics across the
 #' entire agricultural land extent without distinguishing between
@@ -1003,7 +1013,7 @@ process_all_agri_bdry <- function(source_path){
   v <- terra::vect(source_path) |> 
     terra::aggregate()
   
-  v$boundary_key <- paste0("agricultural land",":::","all agricultural land")
+  v$boundary_key <- paste0("Agricultural land",":::","All agricultural land")
   
   v <- v[, "boundary_key"]
   
@@ -1018,7 +1028,7 @@ process_all_agri_bdry <- function(source_path){
   output_path
 }
 
-#' Process public land boundary
+#' Process public and Crown Estate land boundary
 #'
 #' Reads the boundary geometries, standardises the boundary attributes to
 #' a common schema (`boundary_key`), and writes the
@@ -1037,7 +1047,7 @@ process_public_land_bdry <- function(source_path){
   
   v <- terra::vect(source_path)
   
-  v$boundary_key <- paste0("public land",":::","public land")
+  v$boundary_key <- paste0("Public and Crown Estate land",":::","Public and Crown Estate land")
   
   v <- v[, "boundary_key"]
   
