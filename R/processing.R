@@ -767,7 +767,7 @@ process_ghgi_extent_std <- function(source_path, extent_list, resolution,
 #' supplied extent and resolution, and rasterises the `boundary_key`
 #' attribute onto the target grid.
 #'
-#' The output raster is written as an unsigned 16-bit integer GeoTIFF with 
+#' The output raster is written as a GeoTIFF with 
 #' tiled storage. The output filename is derived from the
 #' input GeoPackage path by replacing the `.gpkg` suffix with `_rast.tif`.
 #'
@@ -897,7 +897,7 @@ process_cnp_bdry <- function(source_path){
 #' Process main river and coastal catchment boundaries
 #'
 #' Reads the SEPA main river and coastal catchment dataset, retains
-#' catchments with an area of at least 100 km² after cropping to the supplied
+#' catchments with an area of at least 1 km² after cropping to the supplied
 #'  land area, and standardises identifiers by creating a
 #' `boundary_key` field. The processed boundaries are written to a
 #' GeoPackage for use in downstream analyses.
@@ -927,7 +927,7 @@ process_catchments_bdry <- function(source_path, land_area){
   v <- sf::st_read(source_path[[1]]) |> 
     mutate(boundary_key = paste0("Catchment",":::",gi02_catchno," - ",catchment_name)) |> 
     sf::st_crop(land_area) |> 
-    filter(as.numeric(st_area(geom)) >= (100*1000*1000)) |> # 100 km2
+    filter(as.numeric(st_area(geom)) >= (1*1000*1000)) |> # 1 km2
     select(boundary_key) 
 
   output_path <- fs::path("data", "processed", "catchments.gpkg")
