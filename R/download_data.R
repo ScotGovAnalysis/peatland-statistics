@@ -102,6 +102,7 @@ download_dataset <- function(
 #'
 #' Helper function for download_dataset_and_metadata
 #' Downloads a file specified by URL to local file path.
+#' In the event of an error, will retry a maximum of three further times.
 #'
 #' @param url Character scalar. A valid URL.
 #' @param path Character scalar. Local file path where the content will be saved.
@@ -109,9 +110,21 @@ download_dataset <- function(
 #' @return An httr2 response object.
 #'
 download_file <- function(url, path) {
-  url |>
-    httr2::request() |>
-    httr2::req_perform(path = path)
+  
+  download_file_retry <- purrr::insistently(
+    \(url, path) {
+      url |>
+        httr2::request() |>
+        httr2::req_perform(path = path)
+    },
+    rate = purrr::rate_backoff(
+      pause_base = 1,
+      pause_cap = 10,
+      max_times = 3
+    )
+  )
+  
+  download_file_retry(url, path)
 }
 
 #' Download metadata for a dataset
@@ -339,6 +352,22 @@ download_arcgol_api_dataset <- function(
   
 }
 
+#' Retry arcgislayers::arc_read()
+#' 
+#' Helper function to retry arcgislayers::arc_read() up to a maximum of three
+#' attempts. If still unsuccessful, the pipeline will error.
+#' Failures are reported before re-running.
+#' 
+arc_read_retry <- purrr::insistently(
+  arcgislayers::arc_read,
+  rate = purrr::rate_backoff(
+    pause_base = 1,
+    pause_cap = 10,
+    max_times = 3
+  ),
+  quiet = FALSE
+)
+
 #' Download an ArcGIS Online dataset and associated metadata
 #'
 #' Downloads a dataset from an ArcGIS Online service using
@@ -391,7 +420,7 @@ download_arcgol_api_and_metadata <- function(
       dataset_file_path,
       paste0(dataset,".rds"))
   
-  dat <- arcgislayers::arc_read(data_location)
+  dat <- arc_read_retry(data_location)
   
   saveRDS(
     object = dat,
@@ -405,7 +434,7 @@ download_arcgol_api_and_metadata <- function(
       dataset_file_path,
       paste0(dataset,".gpkg"))
     
-      arcgislayers::arc_read(data_location) |> 
+    arc_read_retry(data_location) |> 
       terra::vect() |> 
       terra::writeVector(
         filename = dataset_file_path, 
@@ -417,7 +446,7 @@ download_arcgol_api_and_metadata <- function(
       dataset_file_path,
       paste0(dataset,".tif"))
     
-    arcgislayers::arc_read(data_location) |> 
+    arc_read_retry(data_location) |> 
       terra::writeRaster(
         filename = dataset_file_path,
         overwrite = TRUE

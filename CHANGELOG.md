@@ -11,6 +11,11 @@ may change at any time, and the project is not considered stable.
 
 Dates follow YYYY-MM-DD format.
 
+## 1.0.0 2026-11-27
+### Added
+- Final publication version
+- Includes unit tests, validation tests, efficiency adjustments and minor formatting changes
+
 ## 0.2.0 2026-09-10
 ### Added
 - restoration analysis

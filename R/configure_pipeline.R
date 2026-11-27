@@ -15,6 +15,15 @@ fs::path("data", "raw") |> fs::dir_create()
 fs::path("data", "processed") |> fs::dir_create()
 fs::path("data", "outputs") |> fs::dir_create()
 
+# Helper function for terra configuration:
+
+configure_terra <- function() {
+  terra::terraOptions(
+    memmax = global_config$terra$memmax,
+    threads = global_config$terra$threads
+  )
+}
+
 # Download and verify ---
 
 input_target_values <-

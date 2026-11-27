@@ -2,6 +2,10 @@
 
 Open analytical code supporting official statistics on Scotland’s peatlands.
 
+Main report: https://www.gov.scot/publications/official-statistics-on-scotlands-peatlands-2026/
+
+Methodology report: https://www.gov.scot/publications/official-statistics-on-scotlands-peatlands-2026-methodology-report/
+
 ------------------------------------------------------------------------
 
 ## Overview
@@ -85,8 +89,7 @@ This repository includes both unit testing and high-level validation:
 Unit testing is based on the [testthat](https://testthat.r-lib.org/index.html) package. 
 To run all unit tests, enter:
 ```r
-targets::tar_source()
-testthat::test_dir(fs::path("tests", "testthat"))
+source("check.R")
 ```
 
 ------------------------------------------------------------------------

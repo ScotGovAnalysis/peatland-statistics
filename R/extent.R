@@ -23,9 +23,7 @@ create_agreement_map <- function(
     peat_class
 ) {
   
-  s <- terra::rast(input_paths)
-  
-  agree <- sum(s == peat_class, na.rm = TRUE)
+  configure_terra()
   
   fs::dir_create(
     fs::path("data", "outputs")
@@ -37,17 +35,18 @@ create_agreement_map <- function(
     "peat_soil_agreement_map.tif"
   )
   
-  terra::writeRaster(
-    agree,
-    filename = raster_output_path,
-    datatype = "INT1U",
-    overwrite = TRUE,
-    gdal = c(
-      "COMPRESS=ZSTD",
-      "TILED=YES",
-      "BIGTIFF=IF_SAFER"
-    )
-  )
+  s <- terra::rast(input_paths)
+  
+  sum(s == peat_class,
+      na.rm = TRUE,
+      filename = raster_output_path,
+      overwrite = TRUE,
+      wopt = list(
+        datatype = "INT1U",
+        gdal = c(
+          "TILED=YES"
+        )
+      ))
   
   raster_output_path
   

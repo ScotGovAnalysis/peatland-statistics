@@ -1,7 +1,11 @@
 crew:
   use_crew: TRUE
-  workers: 8
+  workers: 12
   seconds_idle: 300
+  
+terra:
+  threads: 1
+  memmax: 12
 
 spatial_parameters:
   common_extent:
@@ -9,43 +13,161 @@ spatial_parameters:
     xmax: 500000
     ymin: 500000
     ymax: 1250000
-  common_resolution: 200
-
-terra_options:
-  memfrac: 0.8
-  memmax: 50
+  common_resolution: 10
   
 input_datasets:
-  aitkenhead_19_pd:
+  aitkenhead_20_pd:
     fun: download
   gagkas_24_psum:
     fun: verify
     filename: DSM_Peat_m1_Psum.tif
+  robb_25_pd:
+    fun: verify
+    filename: PeatThickness.vrt
+  ghgi_basemap:
+    fun: verify
+    filename: GHGI_Baseline_Peat_Condition_1990_Scotland.shp
+  nat_soil_map:
+    fun: download
+  lcs_88:
+    fun: download
+  lca_250k:
+    fun: download
   int_dzs:
     fun: download
   las:
     fun: download
+  lca:
+    fun: download
+  lltnp:
+    fun: download
+  cnp:
+    fun: download
+  agri:
+    fun: verify
+    filename: agri_boundaries.gpkg
+  public_land:
+    fun: verify
+    filename: PublicLand_2026_working.shp
+  catchments:
+    fun: arcgol_api
+  pa_non_spatial:
+    fun: arcgol_api
+  pa_footprints:
+    fun: arcgol_api
+  pa_centroids:
+    fun: arcgol_api
+  pa_ghgi_2024:
+    fun: verify
+    filename: pa_ghg_reporting_2025.shp
+  evans_2017:
+    fun: verify
+    filename: Evans_2017_sites.xlsx
+  ukceh_extr_rest:
+    fun: verify
+    filename: ukceh_extraction_restoration.gpkg
+  non_spatial_rewetting:
+    fun: verify
+    filename: non_spatial_rewetting.xlsx
+  ghgi_2024:
+    fun: verify
+    filename: GHGi_1990_2024_datasets.xlsx
     
 processed_datasets:
-  aitkenhead_19_pd_std:
-    source_dataset: aitkenhead_19_pd
+  aitkenhead_20_pd_std:
+    source_dataset: aitkenhead_20_pd
     type: extent
   gagkas_24_psum_std:
     source_dataset: gagkas_24_psum
     type: extent
-  int_dzs_bdry:
-    source_dataset: int_dzs
-    type: boundary
+  robb_25_pd_std:
+    source_dataset: robb_25_pd
+    type: extent
+  ghgi_extent_std:
+    source_dataset: ghgi_basemap
+    type: extent
+  nat_soil_map_std:
+    source_dataset: nat_soil_map
+    type: extent
+  ghgi_condition_std:
+    source_dataset: ghgi_basemap
+    type: condition
+  lcs_88_std:
+    source_dataset: lcs_88
+    type: condition
+  lca_std:
+    source_dataset: lca
+    type: condition
   las_bdry:
     source_dataset: las
     type: boundary
   land_area_bdry:
     source_dataset: int_dzs
     type: boundary
+  catchments_bdry:
+    source_dataset: catchments
+    type: catchment_boundary
+  lltnp_bdry:
+    source_dataset: lltnp
+    type: boundary
+  cnp_bdry:
+    source_dataset: cnp
+    type: boundary
+  agri_bdry:
+    source_dataset: agri
+    type: boundary
+  all_agri_bdry:
+    source_dataset: agri
+    type: boundary
+  public_land_bdry:
+    source_dataset: public_land
+    type: boundary
+  hex_grid_50km:
+    source_dataset: land_area
+    type: data_vis_boundary
+  pa_centroids_std:
+    source_dataset: pa_centroids
+    type: restoration
+  pa_footprints_std:
+    source_dataset: pa_footprints
+    type: restoration
+  pa_ghgi_2024_std:
+    source_dataset: pa_ghgi_2024
+    type: rewetting
+  evans_2017_std:
+    source_dataset: evans_2017
+    type: rewetting
+  ukceh_extr_rest_std:
+    source_dataset: ukceh_extr_rest
+    type: rewetting
+  ghgi_2024_areas:
+    source_dataset: ghgi_2024
+    type: ghgi
+  ghgi_2024_EFs:
+    source_dataset: ghgi_2024
+    type: ghgi
+  ghgi_2024_emissions_ts:
+    source_dataset: ghgi_2024
+    type: ghgi
+  ghgi_2024_emissions_context:
+    source_dataset: ghgi_2024
+    type: ghgi
+  ghgi_2024_rewetting_emissions:
+    source_dataset: ghgi_2024
+    type: ghgi
+  ghgi_2024_extraction_volumes:
+    source_dataset: ghgi_2024
+    type: ghgi
  
 agreement_analysis:
   input_datasets:
-    - aitkenhead_19_pd_std
+    - aitkenhead_20_pd_std
     - gagkas_24_psum_std
+    - robb_25_pd_std
   peat_class: 6
-  boundary: int_dzs.gpkg
+
+combined_rewetting_dataset:
+  input_datasets:
+    - pa_ghgi_2024_std
+    - evans_2017_std
+    - ukceh_extr_rest_std

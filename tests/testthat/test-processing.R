@@ -26,7 +26,7 @@ test_that("peat depth is classified correctly", {
   
   expect_equal(
     terra::values(result)[,1],
-    c(0, 1, 2, 3, 4, 5, 6, NA)
+    c(0, 1, 2, 3, 4, 5, 6, 0)
   )
 })
 
@@ -82,6 +82,49 @@ test_that("standardise_res disaggregates raster", {
   expect_equal(ncol(out), 4)
 })
 
+test_that("standardise_res returns raster unchanged when resolution already matches", {
+  
+  r <- terra::rast(
+    nrows = 2,
+    ncols = 2,
+    xmin = 0,
+    xmax = 4,
+    ymin = 0,
+    ymax = 4,
+    vals = 1:4
+  )
+  
+  out <- standardise_res(r, 2)
+  
+  expect_equal(terra::res(out), terra::res(r))
+  expect_equal(terra::values(out), terra::values(r))
+})
+
+test_that("standardise_res uses modal aggregation for categorical rasters", {
+  
+  r <- terra::rast(
+    nrows = 2,
+    ncols = 2,
+    xmin = 0,
+    xmax = 2,
+    ymin = 0,
+    ymax = 2,
+    vals = c(1, 1,
+             1, 2)
+  )
+  
+  out <- standardise_res(
+    r,
+    resolution = 2,
+    categorical = TRUE
+  )
+  
+  expect_equal(
+    terra::values(out)[1],
+    1
+  )
+})
+
 test_that("unzip_to_temp extracts files", {
   
   zipfile <- tempfile(fileext = ".zip")
@@ -97,41 +140,26 @@ test_that("unzip_to_temp extracts files", {
   expect_equal(length(list.files(out_dir)), 1)
 })
 
-test_that("apply_land_area_mask handles internal and external NAs correctly", {
+test_that("standardise_ext applies requested extent", {
   
   r <- terra::rast(
-    nrows = 4,
-    ncols = 4,
-    vals = c(
-      1,  2, NA,  4,
-      5, NA,  7,  8,
-      9, 10, 11, 12,
-      13, 14, 15, 16
+    xmin = 0,
+    xmax = 10,
+    ymin = 0,
+    ymax = 10,
+    nrows = 10,
+    ncols = 10
+  )
+  
+  out <- standardise_ext(
+    r,
+    list(
+      xmin = 2,
+      xmax = 8,
+      ymin = 2,
+      ymax = 8
     )
   )
   
-  mask <- terra::rast(r)
-  
-  terra::values(mask) <- c(
-    1, 1, 1, 1,
-    1, 1, 1, 1,
-    1, 1, NA, NA,
-    1, 1, NA, NA
-  )
-  
-  mask_path <- tempfile(fileext = ".tif")
-  terra::writeRaster(mask, mask_path, overwrite = TRUE)
-  
-  result <- apply_land_area_mask(r, mask_path)
-  
-  expect_equal(
-    terra::values(result)[, 1],
-    c(
-      1,  2, 0,  4,
-      5,  0, 7,  8,
-      9, 10, NA, NA,
-      13, 14, NA, NA
-    )
-  )
-  
+  expect_equal(terra::ext(out), terra::ext(2, 8, 2, 8))
 })

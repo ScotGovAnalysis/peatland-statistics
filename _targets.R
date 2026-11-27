@@ -310,11 +310,86 @@ list(
       rewetting_summary_dataset)
   ),
   
+  # Emissions workflow
+  
   tar_target(baseline_emissions_summary_dataset,
              create_baseline_emissions_dataset(
                baseline_condition_summary_dataset,
                ghgi_2024_EFs
              )),
+  
+  tar_target(extraction_emissions_dataset,
+             create_extraction_emissions_dataset(
+               ghgi_2024_extraction_volumes
+             )),
+  
+  tar_target(rewetting_emissions_ex_forestry_dataset,
+             create_rewetting_emissions_ex_forestry_dataset(
+               ghgi_2024_rewetting_emissions,
+               ghgi_2024_EFs
+             )),
+  
+  tar_target(combined_emissions_dataset,
+             list(
+               baseline_emissions_summary_dataset,
+               ghgi_2024_areas,
+               ghgi_2024_emissions_ts,
+               ghgi_2024_emissions_context,
+               rewetting_emissions_ex_forestry_dataset,
+               extraction_emissions_dataset
+             )),
+  
+  # Validation
+  
+  tar_target(
+    rewetting_validation,
+    validate_rewetting(
+      rewetting_summary_dataset
+    )
+  ),
+  
+  tar_target(
+    restoration_validation,
+    validate_restoration(
+      restoration_summary_dataset
+    )
+  ),
+  
+  tar_target(
+    baseline_condition_validation,
+    validate_baseline_condition(
+      baseline_condition_summary_dataset
+    )
+  ),
+  
+  tar_target(
+    simplified_condition_time_series_validation,
+    validate_simplified_condition_time_series(
+      simplified_condition_time_series_dataset
+    )
+  ),
+  
+  tar_target(
+    baseline_emissions_validation,
+    validate_baseline_emissions(
+      baseline_emissions_summary_dataset
+    )
+  ),
+  
+  tar_target(
+    rewetting_emissions_validation,
+    validate_rewetting_emissions(
+      rewetting_emissions_ex_forestry_dataset
+    )
+  ),
+  
+  tar_target(original_basemap_comparison,
+             compare_against_original_basemap(
+              ghgi_condition_std,
+              baseline_condition_summary_dataset
+             )),
+  
+  # Outputs
 
   tar_target(
     output_datasets,
@@ -323,7 +398,7 @@ list(
       restoration_summary_dataset,
       baseline_condition_summary_dataset,
       simplified_condition_time_series_dataset,
-      baseline_emissions_summary_dataset
+      combined_emissions_dataset
     ),
     format = "file"
   )

@@ -101,5 +101,170 @@ create_baseline_emissions_dataset <- function(baseline_condition_df, EF_df) {
   bind_rows(processed, total)
   
 }
+#' Create extraction emissions dataset
+#'
+#' Calculates off-site industrial peat extraction emissions from peat
+#' extraction volumes using the UK National Inventory methodology.
+#' Industrial peat volumes are converted to carbon emissions using an
+#' emission factor of 0.0641 t C m^-3 and then converted to CO2 using
+#' the molecular weight ratio of CO2 to C (44/12).
+#'
+#' @param extraction_volumes_df A data frame containing peat extraction
+#'   volumes. Must include a column named `industrial_volume`
+#'   representing industrial peat extraction volume (m^3).
+#'
+#' @return A data frame with all input columns and an additional column:
+#'   \describe{
+#'     \item{off-site_industrial_emissions}{Estimated off-site industrial
+#'     peat extraction emissions (t CO2).}
+#'   }
+#'
+#' @references Thomson et al. (2011). UK peat extraction emissions
+#'   methodology using an emission factor of 0.0641 t C m^-3.
+#'
+create_extraction_emissions_dataset <- function(extraction_volumes_df){
+  
+  off_site_industrial_EF <- 0.0641
+  
+  c_to_co2_conversion <- 44/12
+  
+  extraction_volumes_df |> 
+    mutate(off_site_industrial_emissions = industrial_volume * 
+             off_site_industrial_EF *
+               c_to_co2_conversion
+             )
+}
 
+#' Calculate emissions reductions from peat soil rewetting
+#'
+#' Estimates changes in greenhouse gas emissions resulting from peat soil
+#' rewetting by comparing baseline and rewetted peat condition emission
+#' factors. Emissions reductions are calculated as the difference between
+#' rewetted and baseline emission factors multiplied by the rewetted area.
+#'
+#' The function excludes forest-to-bog restoration, as this uses a Tier 3
+#' calculation in the GHG inventory.
+#' 
+#' Approximate uncertainty bounds are calculated by propagating the reported
+#' standard errors of the baseline and rewetted emission factors, assuming
+#' independence.
+#'
+#' Summary emissions reductions are calculated for:
+#'
+#' * All rewetting activity (`total`)
+#' * Peatland ACTION-funded rewetting (`pa_total`)
+#' * Other rewetting activity (`other_rewetting_total`)
+#'
+#' @param rewetting_areas_df Tibble containing rewetting area estimates.
+#'   Must include the following columns:
+#'
+#'   * `source` - Source of rewetting activity.
+#'   * `area` - Rewetted area (ha).
+#'   * `baseline_condition` - Peat condition prior to rewetting.
+#'   * `rewetted_condition` - Assumed peat condition after rewetting.
+#'   
+#' @param EF_df Tibble containing emission factors (`EF`) and associated
+#'   standard errors (`SE`) for peat condition classes.
+#'
+#' @return A tibble containing rewetting emissions estimates and summary
+#'   totals. Additional variables include:
+#'
+#' * `delta_EF` - Change in emission factor (`EF2 - EF1`).
+#' * `delta_SE` - Propagated standard error of the emission factor change.
+#' * `delta_emissions_central` - Central estimate of emissions change.
+#' * `delta_emissions_lower` - Approximate lower uncertainty bound.
+#' * `delta_emissions_upper` - Approximate upper uncertainty bound.
+#'
+#' Rows where `source` equals `"total"`, `"pa_total"` or
+#' `"other_rewetting_total"` contain aggregated estimates.
+#'
+#' @details
+#' Emission factor changes are calculated as:
+#'
+#' `delta_EF = EF2 - EF1`
+#'
+#' where:
+#'
+#' * `EF1` is the baseline emission factor.
+#' * `EF2` is the rewetted emission factor.
+#'
+#' Negative values indicate an emissions reduction following rewetting,
+#' while positive values indicate an increase in emissions.
+#'
+#' Emission factor uncertainty is propagated assuming independence:
+#'
+#' `delta_SE = sqrt(SE1^2 + SE2^2)`
+#'
+#' Emissions changes are then calculated as:
+#'
+#' `area × delta_EF`
+#'
+#' Approximate uncertainty bounds are calculated as:
+#'
+#' `area × (delta_EF ± 2 × delta_SE)`
+#'
+#' For aggregated emissions reductions, uncertainty is propagated across
+#' rewetting activities assuming independence:
+#'
+#' `SE_total = sqrt(sum((area × delta_SE)^2))`
+#'
+#' Aggregate uncertainty bounds are then calculated as:
+#'
+#' `total emissions change ± 2 × SE_total`
+#'
+#' These bounds should be interpreted as approximate uncertainty ranges
+#' derived from reported emission factor standard errors rather than formal
+#' confidence intervals.
+#'
+create_rewetting_emissions_ex_forestry_dataset <- function(rewetting_areas_df, EF_df){
+  
+  processed <- rewetting_areas_df |> 
+    filter(baseline_condition != "forest") |> 
+    select(source, area, baseline_condition, rewetted_condition) |> 
+    left_join(EF_df,
+              by = join_by(baseline_condition == condition)) |> 
+    rename("EF1" = "EF",
+           "SE1" = "SE") |> 
+    left_join(EF_df,
+              by = join_by(rewetted_condition == condition)) |> 
+    rename("EF2" = "EF",
+           "SE2" = "SE") |> 
+    mutate(delta_EF = EF2 - EF1,
+           delta_SE = sqrt(SE1^2 + SE2^2),
+           delta_emissions_central = area * delta_EF,
+           delta_emissions_upper = area * (delta_EF + 2*delta_SE),
+           delta_emissions_lower = area * (delta_EF - 2*delta_SE))
+  
+  calculate_totals <- function(x, total_name){
+    x |> 
+      summarise(
+        source = total_name,
+        se_total = sqrt(sum((area * delta_SE)^2)),
+        area = sum(area),
+        delta_emissions_central = sum(delta_emissions_central),
+        delta_emissions_lower = delta_emissions_central - 2 * se_total,
+        delta_emissions_upper = delta_emissions_central + 2 * se_total,
+        .groups = "drop"
+      ) |> 
+      select(-se_total)
+  }
+  
+  total <- processed |>
+    calculate_totals("total")
+    
+  
+  pa_total <- processed |> 
+    filter(source == "Peatland ACTION submission - July 2025") |> 
+    calculate_totals("pa_total")
+  
+  other_rewetting_total <- processed |> 
+    filter(source != "Peatland ACTION submission - July 2025") |> 
+    calculate_totals("other_rewetting_total")
+  
+  bind_rows(processed,
+            other_rewetting_total,
+            pa_total,
+            total)
+  
+}
 
