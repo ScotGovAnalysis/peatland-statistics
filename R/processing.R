@@ -838,7 +838,7 @@ process_lltnp_bdry <- function(source_path){
     fs::path(extract_dir, "SG_LochLomondTrossachsNationalPark_2002.shp")
   )
   
-  v$boundary_key <- paste0("national park", ":::", "Loch Lomond & the Trossachs National Park")
+  v$boundary_key <- paste0("National park", ":::", "Loch Lomond & the Trossachs National Park")
   
   v <- v[, "boundary_key"]
   
@@ -879,7 +879,7 @@ process_cnp_bdry <- function(source_path){
     fs::path(extract_dir, "SG_CairngormsNationalPark_2010.shp")
   )
   
-  v$boundary_key <- paste0("national park",":::","Cairngorms National Park")
+  v$boundary_key <- paste0("National park",":::","Cairngorms National Park")
   
   v <- v[, "boundary_key"]
   
@@ -963,7 +963,7 @@ process_agri_bdry <- function(source_path){
     dplyr::recode(
       v$class,
       "bps" = "Claimed under Basic Payment Scheme",
-      "common grazings only" = "Common grazings"
+      "common grazing" = "Common grazings"
     )
   )
   
